@@ -1,4 +1,3 @@
-import { updateOne } from '../../../backend/models/User';
 import api from './api'
 
 const questService = {

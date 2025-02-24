@@ -43,17 +43,20 @@ const login = async (req, res) => {
             return res.status(400).json({ message: 'Пользователь не найден' });
         }
 
+        console.log('Введенный пароль:', password);
+        console.log('Хешированный пароль в базе:', user.password);
         const isPasswordCorrect = await bcrypt.compare(password, user.password);
         if (!isPasswordCorrect) {
             return res.status(400).json({ message: 'Пароль не верный!' });
         }
 
-        const token = jwt.sign({ id: user._id }, procces.env.JWT_SECRET, {
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
             expiresIn: '1h',
-        }); 
+        });
 
         res.status(200).json({ user, token });
     } catch (error) {
+        console.error('Login error:', error);
         res.status(500).json({ message: 'Login error', error: error.message });
     }
 }
