@@ -1,12 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TextField, Button, Box, Typography } from '@mui/material';
 import questService from '../services/questService';
 
-const QuestForm = ({ onQuestCreated }) => {
+const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (editingQuest) {
+      setTitle(editingQuest.title);
+      setDescription(editingQuest.description);
+      setTags(editingQuest.tags.join(', '));
+    }
+  }, [editingQuest]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,14 +26,20 @@ const QuestForm = ({ onQuestCreated }) => {
         tags: tags.split(',').map(tag => tag.trim()),
       };
 
-      const newQuest = await questService.createQuest(questData);
-      onQuestCreated(newQuest); 
+      if (editingQuest) {
+        const updatedQuest = await questService.updateQuest(editingQuest._id, questData);
+        onQuestUpdated(updatedQuest);
+      } else {
+        const newQuest = await questService.createQuest(questData);
+        onQuestCreated(newQuest);
+      }
+
       setTitle('');
       setDescription('');
       setTags('');
       setError('');
     } catch (error) {
-      setError('Ошибка при создании квеста');
+      setError('Ошибка при сохранении квеста');
       console.error(error);
     }
   };
@@ -33,7 +47,7 @@ const QuestForm = ({ onQuestCreated }) => {
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
       <Typography variant="h6" gutterBottom>
-        Создать новый квест
+        {editingQuest ? 'Редактировать квест' : 'Создать новый квест'}
       </Typography>
       {error && <Typography color="error">{error}</Typography>}
       <TextField
@@ -61,7 +75,7 @@ const QuestForm = ({ onQuestCreated }) => {
         margin="normal"
       />
       <Button type="submit" variant="contained" color="primary" sx={{ mt: 2 }}>
-        Создать квест
+        {editingQuest ? 'Сохранить изменения' : 'Создать квест'}
       </Button>
     </Box>
   );
