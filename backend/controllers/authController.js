@@ -8,24 +8,21 @@ const register = async (req, res) => {
 
         const existingEmail = await User.findOne({ email });
         const existingUsername = await User.findOne({ username }); 
-
         if (existingEmail || existingUsername) {
             return res.status(400).json({ message: 'Пользователь уже существует' });
         }
-
+        
         const hashedPassword = await bcrypt.hash(password, 10);
-
         const user = new User({
-            username: username,
-            email: email,
+            username,
+            email,
             password: hashedPassword,
         });
 
         await user.save();
-        
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-            expiresIn: '1h',
-        });
+        // const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        //     expiresIn: '1h',
+        // });
 
         res.status(201).json({ user, token });
     } catch (error) {
@@ -43,8 +40,6 @@ const login = async (req, res) => {
             return res.status(400).json({ message: 'Пользователь не найден' });
         }
 
-        console.log('Введенный пароль:', password);
-        console.log('Хешированный пароль в базе:', user.password);
         const isPasswordCorrect = await bcrypt.compare(password, user.password);
         if (!isPasswordCorrect) {
             return res.status(400).json({ message: 'Пароль не верный!' });
