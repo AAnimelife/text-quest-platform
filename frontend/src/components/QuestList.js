@@ -1,8 +1,11 @@
 import React from 'react';
 import { List, ListItem, ListItemText, Button, Typography, Box } from '@mui/material';
 import questService from '../services/questService';
+import { useNavigate } from 'react-router-dom';
 
 const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
+  const navigate = useNavigate();
+
   const handleDelete = async (id) => {
     try {
       await questService.deleteQuest(id);
@@ -35,6 +38,14 @@ const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
               onClick={() => handleDelete(quest._id)}
             >
               Удалить
+            </Button>
+            <Button
+              variant="contained"
+              color="info"
+              sx={{ ml: 2 }}
+              onClick={() => navigate(`/quests/${quest._id}/pages`)} 
+            >
+              Страницы
             </Button>
           </ListItem>
         ))}
