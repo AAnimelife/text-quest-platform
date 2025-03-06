@@ -2,13 +2,42 @@ import api from './api';
 
 const authService = {
   register: async (userData) => {
-    const response = await api.post('/auth/register', userData);
-    return response.data;
+    try {
+      if (!userData.username || !userData.email || !userData.password) {
+        throw new Error('Не все поля заполнены');
+      }
+
+      const response = await api.post('/auth/register', userData);
+      console.log('Успешная регистрация:', response.data);
+
+      if (response.data.token) {
+        authService.setToken(response.data.token);
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка регистрации:', error.response?.data || error.message);
+      throw error; 
+    }
   },
 
   login: async (userData) => {
-    const response = await api.post('/auth/login', userData);
-    return response.data;
+    try {
+      if (!userData.email || !userData.password) {
+        throw new Error(`Не все поля заполнены`);
+      }
+      const response = await api.post('/auth/login', userData);
+      console.log('Успешная авторизация:', response.data);
+
+      if (response.data.token) {
+        authService.setToken(response.data.token);
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка авторизации:', error.response?.data || error.message);
+      throw error; 
+    }
   },
 
   setToken: (token) => {

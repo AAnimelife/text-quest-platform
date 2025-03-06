@@ -11,7 +11,7 @@ const questService = {
         }
     },
     
-    createQuests: async (questData) => {
+    createQuest: async (questData) => {
         try {
             const response = await api.post('/quests', questData);
             return response.data;
@@ -21,7 +21,7 @@ const questService = {
         }
     },
 
-    updateQuests: async (id, questData) => {
+    updateQuest: async (id, questData) => {
         try {
             const response = await api.put(`/quests/${id}`, questData);
             return response.data;
@@ -31,7 +31,7 @@ const questService = {
         }
     },
 
-    deleteQuests: async (id) => {
+    deleteQuest: async (id) => {
         try {
             const response = await api.delete(`/quests/${id}`);
             return response.data;

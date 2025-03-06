@@ -20,9 +20,9 @@ const register = async (req, res) => {
         });
 
         await user.save();
-        // const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        //     expiresIn: '1h',
-        // });
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+            expiresIn: '1h',
+        });
 
         res.status(201).json({ user, token });
     } catch (error) {
