@@ -13,8 +13,8 @@ const RegisterForm = ({ onRegister }) => {
 
     try {
       const userData = { username, email, password };
-      const response = await authService.register(userData);
-      onRegister(response); 
+      /*const response = */await authService.register(userData);
+      onRegister(userData); 
       setError('');
     } catch (error) {
       setError('Ошибка при регистрации');

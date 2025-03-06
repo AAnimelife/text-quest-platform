@@ -12,8 +12,9 @@ const LoginForm = ({ onLogin }) => {
 
     try {
       const userData = { email, password };
-      const response = await authService.login(userData);
-      onLogin(response); 
+      /*const response = */await authService.login(userData);
+
+      onLogin(userData); 
       setError('');
     } catch (error) {
       setError('Ошибка при входе');
