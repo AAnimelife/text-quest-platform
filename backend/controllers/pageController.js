@@ -33,12 +33,12 @@ const updatePage = async (req, res) => {
         const { id } = req.params;
         const { title, content, choices } = req.body;
 
-        const page = await QuestPage.findByIdAndUpdate(
-            { id: id},
-            { title: title, content: content, choices: choices },
+        const page = await QuestPage.findOneAndUpdate(
+            { _id: id},
+            { title, content, choices },
             { new: true },
         );
-
+        
         if (!page) {
             return res.status(404).json({ message: 'Page not found :(' });
         }

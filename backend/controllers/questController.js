@@ -33,13 +33,13 @@ const updateQuest = async (req, res) => {
     try {
         const { id } = req.params;
         const { title, description, tags, globalVariables, settings } = req.body;
-
+        
+        console.log(JSON.stringify(req.body));
         const quest = await Quest.findOneAndUpdate(
             { _id: id, author: req.user._id },
             { title, description, tags, globalVariables, settings },
             { new: true }
         );
-
         if (!quest) {
             return res.status(404).json({ message: 'Quest not found :(' });
         }
