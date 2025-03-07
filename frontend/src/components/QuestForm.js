@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { TextField, Button, Box, Typography } from '@mui/material';
 import questService from '../services/questService';
+import GlobalVariablesForm from './GlobalVariablesForm';
 
 const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState('');
   const [error, setError] = useState('');
+  const [globalVariables, setGlobalVariables] = useState({});
 
   useEffect(() => {
     if (editingQuest) {
       setTitle(editingQuest.title);
       setDescription(editingQuest.description);
       setTags(editingQuest.tags.join(', '));
+      setGlobalVariables(editingQuest.globalVariables || {});
     }
   }, [editingQuest]);
 
@@ -24,6 +27,7 @@ const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
         title,
         description,
         tags: tags.split(',').map(tag => tag.trim()),
+        globalVariables,
       };
 
       if (editingQuest) {
@@ -37,6 +41,7 @@ const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
       setTitle('');
       setDescription('');
       setTags('');
+      setGlobalVariables({});
       setError('');
     } catch (error) {
       setError('Ошибка при сохранении квеста');
@@ -73,6 +78,10 @@ const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
         onChange={(e) => setTags(e.target.value)}
         fullWidth
         margin="normal"
+      />
+      <GlobalVariablesForm
+        globalVariables={globalVariables}
+        onUpdate={setGlobalVariables}
       />
       <Button type="submit" variant="contained" color="primary" sx={{ mt: 2 }}>
         {editingQuest ? 'Сохранить изменения' : 'Создать квест'}
