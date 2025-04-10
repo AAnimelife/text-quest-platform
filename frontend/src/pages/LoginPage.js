@@ -1,6 +1,6 @@
 import React from 'react';
 import LoginForm from '../components/LoginForm';
-import { Container, Typography } from '@mui/material';
+import { Container } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -15,9 +15,9 @@ const LoginPage = () => {
 
   return (
     <Container>
-      <Typography variant="h4" gutterBottom>
+      {/* <Typography variant="h4" gutterBottom>
         Вход
-      </Typography>
+      </Typography> */}
       <LoginForm onLogin={handleLogin} />
     </Container>
   );

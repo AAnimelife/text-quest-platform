@@ -50,11 +50,23 @@ const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
-      <Typography variant="h6" gutterBottom>
+    <Box
+      component="form"
+      onSubmit={handleSubmit}
+      sx={{
+        mt: 3,
+        mx: 'auto',
+        maxWidth: 800,
+        padding: 3,
+        borderRadius: 2,
+        boxShadow: 3,
+        backgroundColor: 'white',
+      }}
+    >
+      <Typography variant="h6" gutterBottom align="center">
         {editingQuest ? 'Редактировать квест' : 'Создать новый квест'}
       </Typography>
-      {error && <Typography color="error">{error}</Typography>}
+      {error && <Typography color="error" align="center" sx={{ mb: 2 }}>{error}</Typography>}
       <TextField
         label="Название"
         value={title}
@@ -62,6 +74,7 @@ const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
         fullWidth
         margin="normal"
         required
+        sx={{ mb: 2 }}
       />
       <TextField
         label="Описание"
@@ -71,6 +84,7 @@ const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
         margin="normal"
         multiline
         rows={4}
+        sx={{ mb: 2 }}
       />
       <TextField
         label="Теги (через запятую)"
@@ -78,12 +92,27 @@ const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
         onChange={(e) => setTags(e.target.value)}
         fullWidth
         margin="normal"
+        sx={{ mb: 2 }}
       />
       <GlobalVariablesForm
         globalVariables={globalVariables}
         onUpdate={setGlobalVariables}
       />
-      <Button type="submit" variant="contained" color="primary" sx={{ mt: 2 }}>
+      <Button
+        type="submit"
+        variant="contained"
+        color="primary"
+        fullWidth
+        sx={{
+          mt: 2,
+          py: 1.5,
+          borderRadius: 1,
+          boxShadow: 2,
+          '&:hover': {
+            boxShadow: 3,
+          },
+        }}
+      >
         {editingQuest ? 'Сохранить изменения' : 'Создать квест'}
       </Button>
     </Box>
