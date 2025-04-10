@@ -10,17 +10,17 @@ const questPageSchema = new mongoose.Schema({
       nextPage: { type: mongoose.Schema.Types.ObjectId, ref: 'QuestPage' },
       conditions: [
         {
-          variableName: { type: String, required: true },
-          operator: { type: String, required: true },
-          value: { type: String, required: true },
-        },
+          variableName: { type: String },
+          operator: { type: String },
+          value: { type: String },
+        }
       ],
       effects: [
         {
-          variableName: { type: String, required: true },
-          operator: { type: String, required: true },
-          value: { type: String, required: true },
-        },
+          variableName: { type: String },
+          operator: { type: String },
+          value: { type: String },
+        }
       ],
     },
   ],

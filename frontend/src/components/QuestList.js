@@ -16,14 +16,28 @@ const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
   };
 
   return (
-    <Box sx={{ mt: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Список квестов
-      </Typography>
+    <Box 
+      sx={{
+        mt: 3,
+        mx: 'auto',
+        boxShadow: 3,
+        backgroundColor: 'white',
+        
+      }}
+    >
       <List>
         {quests.map((quest) => (
-          <ListItem key={quest._id}>
-            <ListItemText primary={quest.title} secondary={quest.description} />
+          <ListItem key={quest._id} sx={{ mb: 2 }}>
+            <ListItemText
+              primary={quest.title}
+              secondary={quest.description}
+              sx={{
+                maxWidth: '70%',
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                textOverflow: 'ellipsis',
+              }}
+            />
             <Button
               variant="contained"
               color="primary"
@@ -43,7 +57,7 @@ const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
               variant="contained"
               color="info"
               sx={{ ml: 2 }}
-              onClick={() => navigate(`/quests/${quest._id}/pages`)} 
+              onClick={() => navigate(`/quests/${quest._id}/pages`)}
             >
               Страницы
             </Button>

@@ -3,7 +3,6 @@ import { List, ListItem, ListItemText, Button, Typography, Box } from '@mui/mate
 import pageService from '../services/pageService';
 
 const QuestPageList = ({ pages, onPageDeleted, onPageUpdated }) => {
-
   const handleDelete = async (id) => {
     try {
       await pageService.deletePage(id);
@@ -20,23 +19,39 @@ const QuestPageList = ({ pages, onPageDeleted, onPageUpdated }) => {
       </Typography>
       <List>
         {pages.map((page) => (
-          <ListItem key={page._id}>
-            <ListItemText primary={page.title} secondary={page.content} />
-            <Button
-              variant="contained"
-              color="primary"
-              sx={{ mr: 2 }}
-              onClick={() => onPageUpdated(page)} 
-            >
-              Редактировать
-            </Button>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={() => handleDelete(page._id)}
-            >
-              Удалить
-            </Button>
+          <ListItem
+            key={page._id}
+            sx={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: 2,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <ListItemText
+                primary={page.title}
+                secondary={page.content}
+                secondaryTypographyProps={{ whiteSpace: 'pre-line' }}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: '120px' }}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => onPageUpdated(page)}
+              >
+                Редактировать
+              </Button>
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={() => handleDelete(page._id)}
+              >
+                Удалить
+              </Button>
+            </Box>
           </ListItem>
         ))}
       </List>
