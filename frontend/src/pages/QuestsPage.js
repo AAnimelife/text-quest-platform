@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import QuestList from '../components/QuestList';
 import QuestForm from '../components/QuestForm';
-import { Container, Box } from '@mui/material';
+import { Container, Box, Typography } from '@mui/material';
 import questService from '../services/questService';
 import Header from '../components/Header';
+import authService from '../services/authService';
+import { Navigate, useNavigate } from 'react-router-dom';
 
 const QuestsPage = () => {
   const [quests, setQuests] = useState([]);
   const [editingQuest, setEditingQuest] = useState(null);
-
+  const navigate = useNavigate();
   useEffect(() => {
     const fetchQuests = async () => {
       try {
@@ -36,12 +38,11 @@ const QuestsPage = () => {
 
   return (
     <Container sx={{ maxWidth: 1200, mt: 3 }}>
-      <Header />
+      <Header isAuthenticated={localStorage.getItem("token")} onLogout={() => {
+        localStorage.removeItem("token");
+        navigate('/');
+        }}/>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        {/* <Typography variant="h4" gutterBottom>
-          Управление квестами
-        </Typography>
-        <LogoutButton /> */}
       </Box>
       <QuestForm
         onQuestCreated={handleQuestCreated}
