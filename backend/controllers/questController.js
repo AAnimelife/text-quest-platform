@@ -46,6 +46,7 @@ const updateQuest = async (req, res) => {
 
         res.status(200).json(quest);
     } catch (error) {
+        console.log('Error while update a quest:' + error.message)
         res.status(500).json({ message:'Error while update a quest:', error: error.message });
     }
 };

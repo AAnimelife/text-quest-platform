@@ -6,7 +6,13 @@ const questSchema = new mongoose.Schema({
   author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   tags: [{ type: String }],
   pages: [{ type: mongoose.Schema.Types.ObjectId, ref: 'QuestPage' }],
-  globalVariables: { type: Map, of: String },
+  globalVariables: { 
+    type: Map,
+    of: new mongoose.Schema({
+      type: String,
+      initialValue: mongoose.Schema.Types.Mixed
+    }, { _id: false }) 
+  },
   settings: {
     randomEvents: { type: Boolean, default: false },
   },
