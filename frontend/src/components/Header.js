@@ -1,13 +1,11 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, Box, useTheme } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
-
-// Примерный пропс для авторизации
-// const isAuthenticated = true;
 
 const Header = ({ isAuthenticated, onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
 
   const getPageTitle = () => {
     switch (location.pathname) {
@@ -23,14 +21,17 @@ const Header = ({ isAuthenticated, onLogout }) => {
   };
 
   return (
-    <AppBar position="static" color="ok" >
+    <AppBar
+      position="static"
+      elevation={2}
+      sx={{
+        backgroundColor: theme.palette.background.default,
+        color: theme.palette.text.primary,
+      }}
+    >
       <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
-        {/* Левая часть — заголовок */}
-        <Typography variant="h6" component="div">
-          {getPageTitle()}
-        </Typography>
+        <Typography variant="h6">{getPageTitle()}</Typography>
 
-        {/* Правая часть — кнопки */}
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button color="inherit" onClick={() => navigate('/')}>
             На главную

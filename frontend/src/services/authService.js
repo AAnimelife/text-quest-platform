@@ -2,6 +2,7 @@ import api from './api';
 
 const authService = {
   register: async (userData) => {
+    console.log('Отправка запроса регистрации');
     try {
       if (!userData.username || !userData.email || !userData.password) {
         throw new Error('Не все поля заполнены');
@@ -16,8 +17,9 @@ const authService = {
 
       return response.data;
     } catch (error) {
-      console.error('Ошибка регистрации:', error.response?.data || error.message);
-      throw error; 
+      const message = error.response?.data?.message || error.message;
+      console.error('Ошибка регистрации:', message);
+      throw error;
     }
   },
 

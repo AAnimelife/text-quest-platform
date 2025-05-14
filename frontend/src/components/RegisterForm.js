@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextField, Button, Box, Typography } from '@mui/material';
+import { TextField, Button, Box, Typography, useTheme } from '@mui/material';
 import authService from '../services/authService';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,13 +9,13 @@ const RegisterForm = ({ onRegister }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
-
+  const theme = useTheme();
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
       const userData = { username, email, password };
-      /*const response = */await authService.register(userData);
+      //const response = await authService.register(userData);
       onRegister(userData); 
       setError('');
     } catch (error) {
@@ -29,100 +29,82 @@ const RegisterForm = ({ onRegister }) => {
       component="form"
       onSubmit={handleSubmit}
       sx={{
-        mt: 5,
-        mx: 'auto', // Центрируем форму
-        width: '100%',
-        maxWidth: 400, // Ограничиваем максимальную ширину формы
-        padding: 3,
-        borderRadius: 2,
-        boxShadow: 3,
-        backgroundColor: 'white',
+        mt: 8,
+        mx: 'auto',
+        maxWidth: 400,
+        border: '1px solid black',
+        px: 4,
+        py: 5,
+        backgroundColor: theme.palette.background.paper,
       }}
     >
-      <Typography variant="h6" gutterBottom align="center">
+      <Typography variant="h2" align="center" gutterBottom>
         Регистрация
       </Typography>
+
       {error && (
         <Typography color="error" align="center" sx={{ mb: 2 }}>
           {error}
         </Typography>
       )}
+
       <TextField
         label="Имя пользователя"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
         fullWidth
-        margin="normal"
         required
-        sx={{
-          '& .MuiInputBase-root': {
-            borderRadius: 1,
-          },
-        }}
+        margin="normal"
+        variant="outlined"
       />
+
       <TextField
         label="Email"
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         fullWidth
-        margin="normal"
         required
-        sx={{
-          '& .MuiInputBase-root': {
-            borderRadius: 1,
-          },
-        }}
+        margin="normal"
+        variant="outlined"
       />
+
       <TextField
         label="Пароль"
         type="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         fullWidth
-        margin="normal"
         required
-        sx={{
-          '& .MuiInputBase-root': {
-            borderRadius: 1,
-          },
-        }}
+        margin="normal"
+        variant="outlined"
       />
+
       <Button
         type="submit"
-        variant="contained"
-        color="primary"
+        variant="outlined"
         fullWidth
         sx={{
-          mt: 2,
+          mt: 3,
           py: 1.5,
-          borderRadius: 1,
-          boxShadow: 2,
-          '&:hover': {
-            boxShadow: 3,
-          },
+          borderRadius: 0,
         }}
       >
         Зарегистрироваться
       </Button>
+
       <Button
-        variant="outlined"
-        color="primary"
+        variant="text"
         fullWidth
         sx={{
           mt: 2,
-          py: 1.5,
-          borderRadius: 1,
-          borderColor: 'primary.main',
-          boxShadow: 2,
-          '&:hover': {
-            borderColor: 'primary.dark',
-            backgroundColor: 'primary.light',
-          },
+          py: 1,
+          textTransform: 'none',
+          fontSize: '0.9rem',
         }}
-        onClick={() => navigate(`/login`)}
+        onClick={() => navigate('/login')}
       >
-        Уже есть аккаунт
+        Уже есть аккаунт? Войти
       </Button>
     </Box>
   );

@@ -1,8 +1,9 @@
 import React from 'react';
-import { List, ListItem, ListItemText, Button, Typography, Box } from '@mui/material';
+import { List, ListItem, ListItemText, Button, Typography, Box, useTheme } from '@mui/material';
 import pageService from '../services/pageService';
 
 const QuestPageList = ({ pages, onPageDeleted, onPageUpdated }) => {
+  const theme = useTheme();
   const handleDelete = async (id) => {
     try {
       await pageService.deletePage(id);
@@ -19,6 +20,18 @@ const QuestPageList = ({ pages, onPageDeleted, onPageUpdated }) => {
       </Typography>
       <List>
         {pages.map((page) => (
+          <Box
+                key={page._id}
+                sx={{
+                  mb: 2,
+                  p: 2,
+                  border: '1px solid black',
+                  backgroundColor: theme.palette.background.paper,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
           <ListItem
             key={page._id}
             sx={{
@@ -53,6 +66,7 @@ const QuestPageList = ({ pages, onPageDeleted, onPageUpdated }) => {
               </Button>
             </Box>
           </ListItem>
+          </Box>
         ))}
       </List>
     </Box>
