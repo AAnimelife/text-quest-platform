@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { TextField, Box, Typography, List, ListItem, ListItemText, IconButton, MenuItem } from '@mui/material';
+import { TextField, Box, Typography, List, ListItem, useTheme, Paper, ListItemText, IconButton, MenuItem } from '@mui/material';
 import { Add, Delete } from '@mui/icons-material';
 
 const GlobalVariablesForm = ({ globalVariables, onUpdate }) => {
   const [newVariableName, setNewVariableName] = useState('');
   const [newVariableType, setNewVariableType] = useState('number');
   const [newVariableValue, setNewVariableValue] = useState('');
+  const theme = useTheme();
 
   const handleAddVariable = () => {
     if (newVariableName.trim() && newVariableValue !== '') {
@@ -30,12 +31,24 @@ const GlobalVariablesForm = ({ globalVariables, onUpdate }) => {
 
   return (
     <Box sx={{ mt: 3 }}>
-      <Typography variant="h6" gutterBottom>
+      <Typography variant="h6" gutterBottom color="text.primary">
         Глобальные переменные
       </Typography>
       <List>
         {Object.entries(globalVariables).map(([name, variable]) => (
-          <ListItem key={name}>
+          <Paper
+            key={name}
+            sx={{
+              mb: 1,
+              px: 2,
+              py: 1,
+              backgroundColor: theme.palette.background.paper,
+              color: theme.palette.text.primary,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
             <ListItemText
               primary={`${name} (${variable.type})`}
               secondary={`Начальное значение: ${variable.initialValue}`}
@@ -43,24 +56,25 @@ const GlobalVariablesForm = ({ globalVariables, onUpdate }) => {
             <IconButton onClick={() => handleDeleteVariable(name)} color="error">
               <Delete />
             </IconButton>
-          </ListItem>
+          </Paper>
         ))}
       </List>
-      <Box display="flex" alignItems="center" sx={{ mt: 2 }}>
+
+      <Box display="flex" alignItems="center" sx={{ mt: 2, flexWrap: 'wrap', gap: 2 }}>
         <TextField
           label="Имя переменной"
           value={newVariableName}
           onChange={(e) => setNewVariableName(e.target.value)}
-          fullWidth
           margin="normal"
+          size="small"
         />
         <TextField
           select
           label="Тип переменной"
           value={newVariableType}
           onChange={(e) => setNewVariableType(e.target.value)}
-          sx={{ ml: 2, minWidth: 120 }}
           margin="normal"
+          size="small"
         >
           <MenuItem value="number">Число</MenuItem>
           <MenuItem value="boolean">Логическое</MenuItem>
@@ -70,10 +84,10 @@ const GlobalVariablesForm = ({ globalVariables, onUpdate }) => {
           value={newVariableValue}
           onChange={(e) => setNewVariableValue(e.target.value)}
           type={newVariableType === 'number' ? 'number' : 'text'}
-          sx={{ ml: 2 }}
           margin="normal"
+          size="small"
         />
-        <IconButton onClick={handleAddVariable} color="primary">
+        <IconButton onClick={handleAddVariable} color="primary" sx={{ alignSelf: 'center' }}>
           <Add />
         </IconButton>
       </Box>

@@ -1,11 +1,11 @@
 import React from 'react';
-import { List, ListItem, ListItemText, Button, Typography, Box } from '@mui/material';
+import { List, ListItem, ListItemText, Button, Typography, Box, Paper, useTheme } from '@mui/material';
 import questService from '../services/questService';
 import { useNavigate } from 'react-router-dom';
 
 const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
   const navigate = useNavigate();
-
+  const theme = useTheme();
   const handleDelete = async (id) => {
     try {
       await questService.deleteQuest(id);
@@ -14,56 +14,64 @@ const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
       console.error('Ошибка при удалении квеста:', error);
     }
   };
-
+  
   return (
-    <Box 
+    <Box sx={{ mt: 3, mx: 'auto' }}>
+      <Typography variant="h5" sx={{ mb: 2, color: theme.palette.text.primary }}>
+        Список квестов
+      </Typography>
+      <List>
+  {quests.map((quest) => (
+    <Box
+      key={quest._id}
       sx={{
-        mt: 3,
-        mx: 'auto',
-        boxShadow: 3,
-        backgroundColor: 'white',
-        
+        mb: 2,
+        p: 2,
+        border: '1px solid black',
+        backgroundColor: theme.palette.background.paper,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
       }}
     >
-      <List>
-        {quests.map((quest) => (
-          <ListItem key={quest._id} sx={{ mb: 2 }}>
-            <ListItemText
-              primary={quest.title}
-              secondary={quest.description}
-              sx={{
-                maxWidth: '70%',
-                overflow: 'hidden',
-                whiteSpace: 'nowrap',
-                textOverflow: 'ellipsis',
-              }}
-            />
-            <Button
-              variant="contained"
-              color="primary"
-              sx={{ mr: 2 }}
-              onClick={() => onQuestUpdated(quest)}
-            >
-              Редактировать
-            </Button>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={() => handleDelete(quest._id)}
-            >
-              Удалить
-            </Button>
-            <Button
-              variant="contained"
-              color="info"
-              sx={{ ml: 2 }}
-              onClick={() => navigate(`/quests/${quest._id}/pages`)}
-            >
-              Страницы
-            </Button>
-          </ListItem>
-        ))}
-      </List>
+      <ListItemText
+        primary={quest.title}
+        secondary={quest.description}
+        sx={{
+          maxWidth: '45%',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          textOverflow: 'ellipsis',
+        }}
+      />
+      <Box sx={{ display: 'flex', gap: 1 }}>
+        <Button
+          variant="outlined"
+          onClick={() => onQuestUpdated(quest)}
+          sx={{ borderRadius: 0 }}
+        >
+          Редактировать
+        </Button>
+        <Button
+          variant="outlined"
+          color="error"
+          onClick={() => handleDelete(quest._id)}
+          sx={{ borderRadius: 0 }}
+        >
+          Удалить
+        </Button>
+        <Button
+          variant="outlined"
+          onClick={() => navigate(`/quests/${quest._id}/pages`)}
+          sx={{ borderRadius: 0 }}
+        >
+          Страницы
+        </Button>
+      </Box>
+    </Box>
+  ))}
+</List>
+
     </Box>
   );
 };

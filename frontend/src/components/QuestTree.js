@@ -1,11 +1,13 @@
+import { Box, useTheme } from '@mui/material';
 import React from 'react';
 import Tree from 'react-d3-tree';
 
 const QuestTree = ({ pages }) => {
+  
   const buildTree = (pages) => {
     const pageMap = new Map();
     const childRefs = new Set();
-
+    
     // Шаг 1: создаем базовую карту страниц
     pages.forEach((page) => {
       pageMap.set(page._id, { ...page, children: [] });
@@ -67,9 +69,17 @@ const QuestTree = ({ pages }) => {
   };
 
   const treeData = buildTree(pages);
-
+  
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   return (
-    <div style={{ width: '100%', height: '500px' }}>
+    <Box
+      sx={{
+        width: '100%',
+        height: '1000px',
+        filter: isDark ? 'invert(1) hue-rotate(180deg)' : 'none',
+      }}
+    >
       <Tree
         data={treeData}
         orientation="vertical"
@@ -79,15 +89,23 @@ const QuestTree = ({ pages }) => {
         nodeSize={{ x: 200, y: 100 }}
         renderCustomNodeElement={({ nodeDatum }) => (
           <g>
-            <circle r="15" fill="#82ca9d" />
-            <text fill="black" strokeWidth="1" x="20" y="5">
+            <circle r="15" fill="#076" />
+            <text
+              x="20"
+              y="5"
+              style={{
+                fill: "#111",
+                fontWeight: "bold",
+                strokeWidth: 0,
+              }}
+            >
               {nodeDatum.title}
             </text>
           </g>
         )}
       />
-    </div>
-  );
+    </Box>
+  )
 };
 
 export default QuestTree;
