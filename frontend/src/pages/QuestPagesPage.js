@@ -42,6 +42,10 @@ const QuestPagesPage = () => {
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
+
+  const handleSetStart = (updatedPage) => {
+    setPages(pages.map((page) => (page._id === updatedPage._id ? updatedPage : page)));
+  }; 
   
   return (
     <Container>
@@ -73,6 +77,7 @@ const QuestPagesPage = () => {
               pages={pages}
               onPageDeleted={handlePageDeleted}
               onPageUpdated={setEditingPage}
+              onSetStart={ handleSetStart }
             />
           </>
         )}

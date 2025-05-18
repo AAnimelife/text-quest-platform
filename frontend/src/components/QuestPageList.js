@@ -2,7 +2,7 @@ import React from 'react';
 import { List, ListItem, ListItemText, Button, Typography, Box, useTheme } from '@mui/material';
 import pageService from '../services/pageService';
 
-const QuestPageList = ({ pages, onPageDeleted, onPageUpdated }) => {
+const QuestPageList = ({ pages, onPageDeleted, onSetStart, onPageUpdated }) => {
   const theme = useTheme();
   const handleDelete = async (id) => {
     try {
@@ -10,6 +10,15 @@ const QuestPageList = ({ pages, onPageDeleted, onPageUpdated }) => {
       onPageDeleted(id);
     } catch (error) {
       console.error('Ошибка при удалении страницы:', error);
+    }
+  };
+  const handleSetStart = async (id) => {
+    try {
+      const new_page = await pageService.setStart(id);
+      onSetStart(new_page);
+    }
+    catch (error) {
+      console.error('Ошибка при задании стартовой страницы: ', error);
     }
   };
 
@@ -40,6 +49,7 @@ const QuestPageList = ({ pages, onPageDeleted, onPageUpdated }) => {
               justifyContent: 'space-between',
               gap: 2,
               flexWrap: 'wrap',
+              fontStyle: page.isStart ? 'bold' : 'normal',
             }}
           >
             <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -47,6 +57,10 @@ const QuestPageList = ({ pages, onPageDeleted, onPageUpdated }) => {
                 primary={page.title}
                 secondary={page.content}
                 secondaryTypographyProps={{ whiteSpace: 'pre-line' }}
+                sx={{
+
+                  fontStyle: page.isStart ? 'italic' : 'normal',
+                }}
               />
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: '120px' }}>
@@ -63,6 +77,13 @@ const QuestPageList = ({ pages, onPageDeleted, onPageUpdated }) => {
                 onClick={() => handleDelete(page._id)}
               >
                 Удалить
+              </Button>
+              <Button 
+                variant="contained"
+                color="secondary"
+                onClick={() => handleSetStart(page._id)}
+              >
+                Сделать началом
               </Button>
             </Box>
           </ListItem>

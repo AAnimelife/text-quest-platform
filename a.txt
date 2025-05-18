@@ -1,0 +1,2391 @@
+
+/* ./backend/config/db.js */
+const mongoose = require('mongoose');
+
+const connectBD = async () => {
+    try {
+        await mongoose.connect(process.env.MONGO_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
+        console.log("MongoDB connected!");
+    } catch (err) {
+        console.log("MongoDB error:", err);
+        process.exit(1);
+    }
+}
+
+module.exports = connectBD;
+        
+/* ./backend/controllers/authController.js */
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+
+const register = async (req, res) => {
+    try {
+        const { username, email, password } = req.body;
+
+        const existingEmail = await User.findOne({ email });
+        const existingUsername = await User.findOne({ username }); 
+        if (existingEmail || existingUsername) {
+            return res.status(400).json({ message: 'Пользователь уже существует' });
+        }
+        
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const user = new User({
+            username,
+            email,
+            password: hashedPassword,
+        });
+
+        await user.save();
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+            expiresIn: '1h',
+        });
+
+        res.status(201).json({ user, token });
+    } catch (error) {
+        res.status(500).json({ message: 'Register error', error: error.message });
+    }
+};
+
+const login = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        const user = await User.findOne({ email });
+
+        if(!user) {
+            return res.status(400).json({ message: 'Пользователь не найден' });
+        }
+
+        const isPasswordCorrect = await bcrypt.compare(password, user.password);
+        if (!isPasswordCorrect) {
+            return res.status(400).json({ message: 'Пароль не верный!' });
+        }
+
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+            expiresIn: '1h',
+        });
+
+        res.status(200).json({ user, token });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ message: 'Login error', error: error.message });
+    }
+}
+
+module.exports = { register, login };
+        
+/* ./backend/controllers/pageController.js */
+const { NotBeforeError } = require('jsonwebtoken');
+const QuestPage = require('../models/QuestPage');
+
+const createPage = async (req, res) => {
+    try {
+        const { questId, title, content, choices } = req.body;
+
+        const page = new QuestPage({
+            questId: questId,
+            title: title,
+            content: content,
+            choices: choices,
+        });
+
+        await page.save();
+        res.status(201).json(page);
+    } catch (error) {
+        res.status(500).json({ message: 'Error while creating a page: ', error: error.message });
+    }
+};
+
+const getPages = async (req, res) => {
+    try {
+        const { questId } = req.params;
+        const pages = await QuestPage.find({ questId: questId });
+        res.status(200).json(pages);
+    } catch (error) {
+        res.status(500).json({ message: 'Error while geting pages: ', error: error.message });
+    }
+};
+
+const updatePage = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, content, choices } = req.body;
+
+        const page = await QuestPage.findOneAndUpdate(
+            { _id: id},
+            { title, content, choices },
+            { new: true },
+        );
+        
+        if (!page) {
+            return res.status(404).json({ message: 'Page not found :(' });
+        }
+
+        res.status(200).json(page);
+    } catch (error) {
+        res.status(500).json({ message: 'Error while updating a page: ', error: error.message });
+    }
+};
+
+const deletePage = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const page = await QuestPage.findByIdAndDelete(id);
+
+        if (!page) {
+            return res.status(404).json({ message: 'Page not found :('});
+        }
+
+        res.status(200).json({ message: 'Page was deleted' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error while deleting a page: ', error: error.message });
+    }
+};
+
+const setStart = async (req, res) => {
+    try {
+        
+        const { id } = req.params;
+        
+        const page = await QuestPage.findById(id);
+        if (!page) {
+            return res.status(404).json({ message: 'Page not found :(' });
+        }
+
+        await QuestPage.findOneAndUpdate(
+            { isStart: true },
+            { isStart: false },
+        );
+
+        page.isStart = true;
+        await page.save();
+        res.status(200).json({ message: 'Page was deleted' });
+        
+    } catch (error) {
+        res.status(500).json({ message: 'Error while set startn page', error: error.message });
+    }
+};
+
+module.exports = { createPage, getPages, updatePage, deletePage, setStart };
+        
+/* ./backend/controllers/questController.js */
+const Quest = require('../models/Quest');
+
+const createQuest = async (req, res) => {
+    try {
+        const {title, description, tags, globalVariables, settings } = req.body;
+
+        const quest = new Quest({
+            title, 
+            description, 
+            tags, 
+            globalVariables, 
+            settings,
+            author: req.user._id,
+        });
+
+        await quest.save();
+        res.status(201).json(quest);
+    } catch (error) {
+        res.status(500).json({ message: 'Error while create a quest: ', error: message });
+    }
+};
+
+const getQuests = async (req, res) => {
+    try {
+        const quests = await Quest.find({ author: req.user._id });
+        res.status(200).json(quests);
+    } catch (error) {
+        res.status(500).json({ message: 'Error while get a quest', error: error.message });
+    }
+};
+
+const updateQuest = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, description, tags, globalVariables, settings } = req.body;
+        const quest = await Quest.findOneAndUpdate(
+            { _id: id, author: req.user._id },
+            { title, description, tags, globalVariables, settings },
+            { new: true }
+        );
+        if (!quest) {
+            return res.status(404).json({ message: 'Quest not found :(' });
+        }
+
+        res.status(200).json(quest);
+    } catch (error) {
+        console.log('Error while update a quest: ' + error.message)
+        res.status(500).json({ message:'Error while update a quest: ', error: error.message });
+    }
+};
+
+const updateQuestVariables = async(req, res) => {
+    try {
+        const { id } = req.params;
+        const { globalVariables } = req.body;
+        
+        const quest = Quest.findOne({ _id: id, author: req.author._id });
+        
+        if (!quest) {
+            return res.status(404).json({ message: 'Quest not found :(' });
+        }
+        
+        if (typeof globalVariables !== 'object') {
+            return res.status(400).json({ message: 'Invalid format' });
+          }
+
+        for (let [key, value] of Object.entries(updates)) {
+            if (value === null) {
+                quest.globalVariables.delete(key);
+            } else {
+                quest.globalVariables.set(key, value);
+            }
+        }
+
+        await quest.save();
+        res.status(200).json({ globalVariables: Object.fromEntries(quest.globalVariables) });
+    }
+    catch (error) {
+        console.log('Error while update quest variables: ', error.message);
+        res.status(500).json({ message: 'Error while update quest variables: ', error: error.message });
+    }
+}
+
+const deleteQuest = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const quest = await Quest.findOneAndDelete({ _id: id, author: req.user._id });
+
+        if (!quest) {
+            return res.status(404).json({ message: 'Quest not found :(' });
+        }
+
+        res.status(200).json({ message: 'Quest was deleted!' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error while delete a quest', error: error.message });
+    } 
+};
+
+module.exports = { createQuest, getQuests, updateQuest, deleteQuest, updateQuestVariables };
+        
+/* ./backend/controllers/userController.js */
+const Quest = require('../models/Quest');
+const QuestPage = require('../models/QuestPage');
+
+const getUserProfile = async (req, res) => {
+  try {
+    const user = req.user;
+
+    // Найдём все квесты, где пользователь автор
+    const quests = await Quest.find({ author: user._id });
+    console.log(quests);
+    // Получим список всех ID квестов
+    const questIds = quests.map(q => q._id);
+
+    // Подсчитаем количество страниц, принадлежащих этим квестам
+    const pageCount = await QuestPage.countDocuments({ questId: { $in: questIds } });
+    console.log(pageCount);
+    res.json({
+      username: user.username,
+      email: user.email,
+      questCount: quests.length,
+      pageCount,
+      quests: quests.map(q => ({ id: q._id, title: q.title })),
+    });
+  } catch (error) {
+    console.error('Ошибка получения профиля:', error);
+    res.status(500).json({ message: 'Ошибка получения профиля', error: error.message });
+  }
+};
+
+module.exports = { getUserProfile };
+
+        
+/* ./backend/middleware/authMiddleware.js */
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+
+
+const authMiddleware = async (req, res, next) => {
+    try {
+        const token = req.header('Authorization').replace('Bearer ', '');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        const user = await User.findOne({ _id: decoded.id });
+
+        if (!user) {
+            throw new Error('User not found!'); 
+        }
+
+        req.user = user;
+        req.token = token;
+        next();
+    } catch (error) {
+        res.status(401).json({ message: 'Auth error!' });
+    }
+};
+
+module.exports = authMiddleware;
+        
+/* ./backend/models/Quest.js */
+const mongoose = require('mongoose');
+
+const questSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String },
+  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  tags: [{ type: String }],
+  pages: [{ type: mongoose.Schema.Types.ObjectId, ref: 'QuestPage' }],
+  globalVariables: { 
+    type: Map,
+    of: new mongoose.Schema({
+      type: String,
+      initialValue: mongoose.Schema.Types.Mixed
+    }, { _id: false }) 
+  },
+  settings: {
+    randomEvents: { type: Boolean, default: false },
+  },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+module.exports = mongoose.model('Quest', questSchema);
+        
+/* ./backend/models/QuestPage.js */
+const mongoose = require('mongoose');
+
+const questPageSchema = new mongoose.Schema({
+  questId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quest', required: true },
+  title: { type: String, required: true },
+  content: { type: String, required: true },
+  choices: [
+    {
+      text: { type: String, required: true },
+      nextPage: { type: mongoose.Schema.Types.ObjectId, ref: 'QuestPage' },
+      conditions: [
+        {
+          variableName: { type: String },
+          operator: { type: String },
+          value: { type: String },
+        }
+      ],
+      effects: [
+        {
+          variableName: { type: String },
+          operator: { type: String },
+          value: { type: String },
+        }
+      ],
+    },
+  ],
+  isStart: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+module.exports = mongoose.model('QuestPage', questPageSchema);
+        
+/* ./backend/models/User.js */
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+
+const userSchema = new mongoose.Schema({
+    username: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+});
+
+userSchema.pre('save', async function (next) {
+    // if (this.isModified('password')) {
+    //     this.password = await bcrypt.hash(this.password, 10);
+    // }
+    next();
+});
+
+module.exports = mongoose.model('User', userSchema);
+        
+/* ./backend/routes/authRoutes.js */
+const express = require('express');
+const { register, login } = require('../controllers/authController');
+
+const router = express.Router();
+
+router.post('/register', register);
+router.post('/login', login);
+
+module.exports = router;
+        
+/* ./backend/routes/pageRoutes.js */
+const express = require('express');
+const authMiddleware = require('../middleware/authMiddleware');
+const { createPage, getPages, updatePage, deletePage, setStart } = require('../controllers/pageController');
+
+const router = express.Router();
+
+router.use(authMiddleware);
+
+router.post('/', createPage);
+router.get('/:questId', getPages);
+router.put('/:id', updatePage);
+router.delete('/:id', deletePage);
+router.patch('/:id/start', setStart);
+
+module.exports = router;
+        
+/* ./backend/routes/questRoutes.js */
+const express = require('express');
+const authMiddleware = require('../middleware/authMiddleware');
+const { createQuest, getQuests, updateQuest, deleteQuest, updateQuestVariables } = require('../controllers/questController');
+
+const router = express.Router();
+
+router.use(authMiddleware);
+
+router.post('/', createQuest);
+router.get('/', getQuests);
+router.put('/:id', updateQuest);
+router.delete('/:id', deleteQuest);
+router.patch('/:id/variables', updateQuestVariables);
+
+module.exports = router;
+        
+/* ./backend/routes/userRoutes.js */
+const express = require('express');
+const router = express.Router();
+const authMiddleware = require('../middleware/authMiddleware');
+const { getUserProfile } = require('../controllers/userController');
+
+
+router.use(authMiddleware);
+router.get('/profile', authMiddleware, getUserProfile);
+
+module.exports = router;
+
+        
+/* ./backend/server.js */
+const express = require('express');
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const cors = require('cors');
+const { route } = require('./routes/userRoutes');
+
+dotenv.config();
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+mongoose.connect(process.env.MONGO_URI, {
+    // useNewUrlParser:true,
+    // useUnifiedTopology: true,
+})
+.then(() => console.log("MongoDB connected!"))
+.catch(err => console.log("Error to connect MongoDB:", err));
+
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/quests', require('./routes/questRoutes'));
+app.use('/api/pages', require('./routes/pageRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
+
+const PORT = process.env.PORT || 5005;
+
+app.listen(PORT, () => console.log(`Server started: localhost: ${PORT}`));
+        
+<!-- ./frontend/public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Web site created using create-react-app"
+    />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <!--
+      manifest.json provides metadata used when your web app is installed on a
+      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
+    -->
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <!--
+      Notice the use of %PUBLIC_URL% in the tags above.
+      It will be replaced with the URL of the `public` folder during the build.
+      Only files inside the `public` folder can be referenced from the HTML.
+
+      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
+      work correctly both with client-side routing and a non-root public URL.
+      Learn how to configure a non-root public URL by running `npm run build`.
+    -->
+    <title>React App</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <!--
+      This HTML file is a template.
+      If you open it directly in the browser, you will see an empty page.
+
+      You can add webfonts, meta tags, or analytics to this file.
+      The build step will place the bundled scripts into the <body> tag.
+
+      To begin the development, run `npm start` or `yarn start`.
+      To create a production bundle, use `npm run build` or `yarn build`.
+    -->
+  </body>
+</html>
+
+        
+<!-- ./frontend/src/App.css -->
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+        
+/* ./frontend/src/App.js */
+import { useMemo, useState } from 'react';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import QuestsPage from './pages/QuestsPage';
+import LoginPage from './pages/LoginPage';
+import ProtectedRoute from './components/ProtectedRoute';
+import RegisterPage from './pages/RegisterPage';
+import QuestPagesPage from './pages/QuestPagesPage';
+import getNewspaperTheme, { theme } from './theme/theme';
+import { ThemeProvider } from '@emotion/react';
+import { Brightness4, Brightness7 } from '@mui/icons-material';
+import { CssBaseline, IconButton } from '@mui/material';
+import UserProfilePage from './pages/UserProfilePage';
+
+function App() {
+  const [mode, setMode] = useState('light');
+
+  const theme = useMemo(() => getNewspaperTheme(mode), [mode]);
+
+  const toggleMode = () => {
+    setMode((prev) => (prev === 'light' ? 'dark' : 'light'));
+  };
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline /> {/* Обеспечивает глобальные стили, включая фон */}
+      <IconButton onClick={toggleMode} sx={{ mt: 2, ml: 2, }}>
+          {mode === 'light' ? <Brightness4 /> : <Brightness7 />}
+        </IconButton>
+      <Router>
+        <Routes>
+          <Route path="/quests" element={<QuestsPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <QuestsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/quests/:questId/pages"
+            element={
+              <ProtectedRoute>
+                <QuestPagesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <UserProfilePage />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Router>
+    </ThemeProvider>
+  );
+};
+
+export default App;
+        
+/* ./frontend/src/App.test.js */
+import { render, screen } from '@testing-library/react';
+import App from './App';
+
+test('renders learn react link', () => {
+  render(<App />);
+  const linkElement = screen.getByText(/learn react/i);
+  expect(linkElement).toBeInTheDocument();
+});
+
+        
+/* ./frontend/src/components/GlobalVariablesForm.js */
+import React, { useState } from 'react';
+import { TextField, Box, Typography, List, ListItem, useTheme, Paper, ListItemText, IconButton, MenuItem } from '@mui/material';
+import { Add, Delete } from '@mui/icons-material';
+
+const GlobalVariablesForm = ({ globalVariables, onUpdate }) => {
+  const [newVariableName, setNewVariableName] = useState('');
+  const [newVariableType, setNewVariableType] = useState('number');
+  const [newVariableValue, setNewVariableValue] = useState('');
+  const theme = useTheme();
+
+  const handleAddVariable = () => {
+    if (newVariableName.trim() && newVariableValue !== '') {
+      const updatedVariables = {
+        ...globalVariables,
+        [newVariableName]: {
+          type: newVariableType,
+          initialValue: newVariableType === 'number' ? Number(newVariableValue) : newVariableValue === 'true',
+        },
+      };
+      onUpdate(updatedVariables);
+      setNewVariableName('');
+      setNewVariableValue('');
+    }
+  };
+
+  const handleDeleteVariable = (name) => {
+    const updatedVariables = { ...globalVariables };
+    delete updatedVariables[name];
+    onUpdate(updatedVariables);
+  };
+
+  return (
+    <Box sx={{ mt: 3 }}>
+      <Typography variant="h6" gutterBottom color="text.primary">
+        Глобальные переменные
+      </Typography>
+      <List>
+        {Object.entries(globalVariables).map(([name, variable]) => (
+          <Paper
+            key={name}
+            sx={{
+              mb: 1,
+              px: 2,
+              py: 1,
+              backgroundColor: theme.palette.background.paper,
+              color: theme.palette.text.primary,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <ListItemText
+              primary={`${name} (${variable.type})`}
+              secondary={`Начальное значение: ${variable.initialValue}`}
+            />
+            <IconButton onClick={() => handleDeleteVariable(name)} color="error">
+              <Delete />
+            </IconButton>
+          </Paper>
+        ))}
+      </List>
+
+      <Box display="flex" alignItems="center" sx={{ mt: 2, flexWrap: 'wrap', gap: 2 }}>
+        <TextField
+          label="Имя переменной"
+          value={newVariableName}
+          onChange={(e) => setNewVariableName(e.target.value)}
+          margin="normal"
+          size="small"
+        />
+        <TextField
+          select
+          label="Тип переменной"
+          value={newVariableType}
+          onChange={(e) => setNewVariableType(e.target.value)}
+          margin="normal"
+          size="small"
+        >
+          <MenuItem value="number">Число</MenuItem>
+          <MenuItem value="boolean">Логическое</MenuItem>
+        </TextField>
+        <TextField
+          label="Начальное значение"
+          value={newVariableValue}
+          onChange={(e) => setNewVariableValue(e.target.value)}
+          type={newVariableType === 'number' ? 'number' : 'text'}
+          margin="normal"
+          size="small"
+        />
+        <IconButton onClick={handleAddVariable} color="primary" sx={{ alignSelf: 'center' }}>
+          <Add />
+        </IconButton>
+      </Box>
+    </Box>
+  );
+};
+
+export default GlobalVariablesForm;
+        
+/* ./frontend/src/components/Header.js */
+import React from 'react';
+import { AppBar, Toolbar, Typography, Button, Box, useTheme } from '@mui/material';
+import { useNavigate, useLocation } from 'react-router-dom';
+
+const Header = ({ isAuthenticated, onLogout }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const theme = useTheme();
+
+  const getPageTitle = () => {
+    switch (location.pathname) {
+      case '/':
+        return 'Управление квестами';
+      case '/quests':
+        return 'Квесты';
+      case '/login':
+        return 'Вход';
+      default:
+        return 'Страницы квеста';
+    }
+  };
+
+  return (
+    <AppBar
+      position="static"
+      elevation={2}
+      sx={{
+        backgroundColor: theme.palette.background.default,
+        color: theme.palette.text.primary,
+      }}
+    >
+      <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Typography variant="h6">{getPageTitle()}</Typography>
+
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button color="inherit" onClick={() => navigate('/')}>
+            На главную
+          </Button>
+
+          {isAuthenticated ? (
+            <>
+              <Button color="inherit" onClick={() => navigate('/profile')}>
+                Профиль
+              </Button>
+              <Button color="inherit" onClick={onLogout}>
+                Выйти
+              </Button>
+            </>
+          ) : (
+            <Button color="inherit" onClick={() => navigate('/login')}>
+              Войти
+            </Button>
+          )}
+        </Box>
+      </Toolbar>
+    </AppBar>
+  );
+};
+
+export default Header;
+
+        
+/* ./frontend/src/components/LoginForm.js */
+import React, { useState } from 'react';
+import { TextField, Button, Box, Typography, useTheme } from '@mui/material';
+import authService from '../services/authService';
+import { useNavigate } from 'react-router-dom';
+
+const LoginForm = ({ onLogin }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const userData = { email, password };
+      /*const response = */await authService.login(userData);
+
+      onLogin(userData); 
+      setError('');
+    } catch (error) {
+      setError('Ошибка при входе');
+      console.error(error);
+    }
+  };
+
+  return (
+    <Box
+      component="form"
+      onSubmit={handleSubmit}
+      sx={{
+        mt: 8,
+        mx: 'auto',
+        maxWidth: 400,
+        border: '1px solid black',
+        px: 4,
+        py: 5,
+        backgroundColor: theme.palette.background.paper,
+      }}
+    >
+      <Typography variant="h2" align="center" gutterBottom>
+        Вход
+      </Typography>
+
+      {error && (
+        <Typography color="error" align="center" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
+
+      <TextField
+        label="Email"
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        fullWidth
+        required
+        margin="normal"
+        variant="outlined"
+      />
+
+      <TextField
+        label="Пароль"
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        fullWidth
+        required
+        margin="normal"
+        variant="outlined"
+      />
+
+      <Button
+        type="submit"
+        variant="outlined"
+        fullWidth
+        sx={{
+          mt: 3,
+          py: 1.5,
+          borderRadius: 0,
+        }}
+      >
+        Войти
+      </Button>
+
+      <Button
+        variant="text"
+        fullWidth
+        sx={{
+          mt: 2,
+          py: 1,
+          textTransform: 'none',
+          fontSize: '0.9rem', 
+        }}
+        onClick={() => navigate('/register')}
+      >
+        Нет аккаунта? Зарегистрируйтесь
+      </Button>
+    </Box>
+  );
+};
+
+export default LoginForm;
+        
+/* ./frontend/src/components/LogoutButton.js */
+import React from 'react';
+import { Button } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
+const LogoutButton = () => {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login'); // Перенаправляем на страницу входа после выхода
+  };
+
+  return (
+    <Button variant="contained" color="secondary" onClick={handleLogout}>
+      Выйти
+    </Button>
+  );
+};
+
+export default LogoutButton;
+        
+/* ./frontend/src/components/ProtectedRoute.js */
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
+const ProtectedRoute = ({ children }) => {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
+
+export default ProtectedRoute;
+        
+/* ./frontend/src/components/QuestForm.js */
+import React, { useState, useEffect } from 'react';
+import { TextField, Button, Box, Typography, useTheme } from '@mui/material';
+import questService from '../services/questService';
+import GlobalVariablesForm from './GlobalVariablesForm';
+
+const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [tags, setTags] = useState('');
+  const [error, setError] = useState('');
+  const [globalVariables, setGlobalVariables] = useState({});
+  const theme = useTheme();
+  useEffect(() => {
+    if (editingQuest) {
+      setTitle(editingQuest.title);
+      setDescription(editingQuest.description);
+      setTags(editingQuest.tags.join(', '));
+      setGlobalVariables(editingQuest.globalVariables || {});
+    }
+  }, [editingQuest]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const questData = {
+        title,
+        description,
+        tags: tags.split(',').map(tag => tag.trim()),
+        globalVariables,
+      };
+
+      if (editingQuest) {
+        const updatedQuest = await questService.updateQuest(editingQuest._id, questData);
+        onQuestUpdated(updatedQuest);
+      } else {
+        const newQuest = await questService.createQuest(questData);
+        onQuestCreated(newQuest);
+      }
+
+      setTitle('');
+      setDescription('');
+      setTags('');
+      setGlobalVariables({});
+      setError('');
+    } catch (error) {
+      setError('Ошибка при сохранении квеста');
+      console.error(error);
+    }
+  };
+
+  return (
+    <Box
+  component="form"
+  onSubmit={handleSubmit}
+  sx={{
+    mt: 8,
+    mx: 'auto',
+    border: '1px solid black',
+    px: 4,
+    py: 5,
+    backgroundColor: theme.palette.background.paper,
+  }}
+>
+  <Typography variant="h5" sx={{ mb: 2, color: theme.palette.text.primary }}>
+    {editingQuest ? 'Редактировать квест' : 'Создать новый квест'}
+  </Typography>
+
+  {error && (
+    <Typography color="error" align="center" sx={{ mb: 2 }}>
+      {error}
+    </Typography>
+  )}
+
+  <TextField
+    label="Название"
+    value={title}
+    onChange={(e) => setTitle(e.target.value)}
+    fullWidth
+    margin="normal"
+    required
+  />
+  <TextField
+    label="Описание"
+    value={description}
+    onChange={(e) => setDescription(e.target.value)}
+    fullWidth
+    margin="normal"
+    multiline
+    rows={4}
+  />
+  <TextField
+    label="Теги (через запятую)"
+    value={tags}
+    onChange={(e) => setTags(e.target.value)}
+    fullWidth
+    margin="normal"
+  />
+  <GlobalVariablesForm
+    globalVariables={globalVariables}
+    onUpdate={setGlobalVariables}
+  />
+  <Button
+    type="submit"
+    variant="outlined"
+    fullWidth
+    sx={{
+      mt: 3,
+      py: 1.5,
+      borderRadius: 0,
+    }}
+  >
+    {editingQuest ? 'Сохранить изменения' : 'Создать квест'}
+  </Button>
+</Box>
+
+  );
+};
+
+export default QuestForm;
+        
+/* ./frontend/src/components/QuestList.js */
+import React from 'react';
+import { List, ListItem, ListItemText, Button, Typography, Box, Paper, useTheme } from '@mui/material';
+import questService from '../services/questService';
+import { useNavigate } from 'react-router-dom';
+
+const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const handleDelete = async (id) => {
+    try {
+      await questService.deleteQuest(id);
+      onQuestDeleted(id);
+    } catch (error) {
+      console.error('Ошибка при удалении квеста:', error);
+    }
+  };
+  
+  return (
+    <Box sx={{ mt: 3, mx: 'auto' }}>
+      <Typography variant="h5" sx={{ mb: 2, color: theme.palette.text.primary }}>
+        Список квестов
+      </Typography>
+      <List>
+  {quests.map((quest) => (
+    <Box
+      key={quest._id}
+      sx={{
+        mb: 2,
+        p: 2,
+        border: '1px solid black',
+        backgroundColor: theme.palette.background.paper,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}
+    >
+      <ListItemText
+        primary={quest.title}
+        secondary={quest.description}
+        sx={{
+          maxWidth: '45%',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          textOverflow: 'ellipsis',
+        }}
+      />
+      <Box sx={{ display: 'flex', gap: 1 }}>
+        <Button
+          variant="outlined"
+          onClick={() => onQuestUpdated(quest)}
+          sx={{ borderRadius: 0 }}
+        >
+          Редактировать
+        </Button>
+        <Button
+          variant="outlined"
+          color="error"
+          onClick={() => handleDelete(quest._id)}
+          sx={{ borderRadius: 0 }}
+        >
+          Удалить
+        </Button>
+        <Button
+          variant="outlined"
+          onClick={() => navigate(`/quests/${quest._id}/pages`)}
+          sx={{ borderRadius: 0 }}
+        >
+          Страницы
+        </Button>
+      </Box>
+    </Box>
+  ))}
+</List>
+
+    </Box>
+  );
+};
+
+export default QuestList;
+        
+/* ./frontend/src/components/QuestPageForm.js */
+import React, { useState, useEffect } from 'react';
+import { TextField, Button, Box, Typography, List, ListItem, IconButton, Select, MenuItem, useTheme } from '@mui/material';
+import { Add, Delete } from '@mui/icons-material';
+import pageService from '../services/pageService';
+
+const QuestPageForm = ({ questId, editingPage, onPageCreated, onPageUpdated, pages }) => {
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [choices, setChoices] = useState([]);
+  const [newChoiceText, setNewChoiceText] = useState('');
+  const [error, setError] = useState('');
+  const theme = useTheme();
+  useEffect(() => {
+    if (editingPage) {
+      setTitle(editingPage.title);
+      setContent(editingPage.content);
+      setChoices(editingPage.choices);
+    }
+  }, [editingPage]);
+
+  const handleAddChoice = () => {
+    if (newChoiceText.trim()) {
+      setChoices([...choices, { text: newChoiceText, nextPage: null, conditions: [], effects: [] }]);
+      setNewChoiceText('');
+    }
+  };
+
+  const handleDeleteChoice = (index) => {
+    const updatedChoices = choices.filter((_, i) => i !== index);
+    setChoices(updatedChoices);
+  };
+
+  const handleChoiceTextChange = (index, text) => {
+    const updatedChoices = choices.map((choice, i) =>
+      i === index ? { ...choice, text } : choice
+    );
+    setChoices(updatedChoices);
+  };
+
+  const handleNextPageChange = (index, nextPage) => {
+    const updatedChoices = choices.map((choice, i) =>
+      i === index ? { ...choice, nextPage } : choice
+    );
+    setChoices(updatedChoices);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const pageData = {
+        questId,
+        title,
+        content,
+        choices,
+      };
+
+      if (editingPage) {
+        const updatedPage = await pageService.updatePage(editingPage._id, pageData);
+        onPageUpdated(updatedPage);
+      } else {
+        const newPage = await pageService.createPage(pageData);
+        onPageCreated(newPage);
+      }
+
+      setTitle('');
+      setContent('');
+      setChoices([]);
+      setError('');
+    } catch (error) {
+      setError('Ошибка при сохранении страницы');
+      console.error(error);
+    }
+  };
+
+  return (
+    <Box
+  component="form"
+  onSubmit={handleSubmit}
+  sx={{
+    mt: 8,
+    mx: 'auto',
+    border: '1px solid black',
+    px: 4,
+    py: 5,
+    backgroundColor: theme.palette.background.paper,
+  }}
+>
+  <Typography variant="h5" sx={{ mb: 1, color: theme.palette.text.primary }}>
+    {editingPage ? 'Редактировать страницу' : 'Создать новую страницу'}
+  </Typography>
+
+  {error && (
+    <Typography color="error" align="center" sx={{ mb: 2 }}>
+      {error}
+    </Typography>
+  )}
+
+  <TextField
+    label="Название"
+    value={title}
+    onChange={(e) => setTitle(e.target.value)}
+    fullWidth
+    margin="normal"
+    required
+  />
+  <TextField
+    label="Содержание"
+    value={content}
+    onChange={(e) => setContent(e.target.value)}
+    fullWidth
+    margin="normal"
+    multiline
+    rows={4}
+  />
+
+  <Typography variant="h5" sx={{ mt: 2, color: theme.palette.text.primary }}>
+    Варианты выбора
+  </Typography>
+
+  <List sx={{ mb: 2 }}>
+    {choices.map((choice, index) => (
+      
+      <ListItem key={index} disablePadding sx={{ mb: 1 }}>
+        <TextField
+          value={choice.text}
+          onChange={(e) => handleChoiceTextChange(index, e.target.value)}
+          fullWidth
+          margin="normal"
+        />
+        <Select
+          value={choice.nextPage || ''}
+          onChange={(e) => handleNextPageChange(index, e.target.value)}
+          displayEmpty
+          sx={{ ml: 2, minWidth: 150 }}
+        >
+          <MenuItem value="">Выберите страницу</MenuItem>
+          {pages.map((page) => (
+            <MenuItem key={page._id} value={page._id}>
+              {page.title}
+            </MenuItem>
+          ))}
+        </Select>
+        <IconButton onClick={() => handleDeleteChoice(index)} color="error" sx={{ ml: 1 }}>
+          <Delete />
+        </IconButton>
+      </ListItem>
+    ))}
+  </List>
+
+  <Box display="flex" alignItems="center" sx={{ mt: 2 }}>
+    <TextField
+      label="Новый вариант выбора"
+      value={newChoiceText}
+      onChange={(e) => setNewChoiceText(e.target.value)}
+      fullWidth
+      margin="normal"
+    />
+    <IconButton onClick={handleAddChoice} color="primary" sx={{ ml: 1 }}>
+      <Add />
+    </IconButton>
+  </Box>
+
+  <Button
+    type="submit"
+    variant="outlined"
+    fullWidth
+    sx={{
+      mt: 3,
+      py: 1.5,
+      borderRadius: 0,
+    }}
+  >
+    {editingPage ? 'Сохранить изменения' : 'Создать страницу'}
+  </Button>
+</Box>
+
+  );
+};
+
+export default QuestPageForm;
+        
+/* ./frontend/src/components/QuestPageList.js */
+import React from 'react';
+import { List, ListItem, ListItemText, Button, Typography, Box, useTheme } from '@mui/material';
+import pageService from '../services/pageService';
+
+const QuestPageList = ({ pages, onPageDeleted, onSetStart, onPageUpdated }) => {
+  const theme = useTheme();
+  const handleDelete = async (id) => {
+    try {
+      await pageService.deletePage(id);
+      onPageDeleted(id);
+    } catch (error) {
+      console.error('Ошибка при удалении страницы:', error);
+    }
+  };
+  const handleSetStart = async (id) => {
+    try {
+      const new_page = await pageService.setStart(id);
+      onSetStart(new_page);
+    }
+    catch (error) {
+      console.error('Ошибка при задании стартовой страницы: ', error);
+    }
+  };
+
+  return (
+    <Box sx={{ mt: 4 }}>
+      <Typography variant="h5" gutterBottom>
+        Страницы квеста
+      </Typography>
+      <List>
+        {pages.map((page) => (
+          <Box
+                key={page._id}
+                sx={{
+                  mb: 2,
+                  p: 2,
+                  border: '1px solid black',
+                  backgroundColor: theme.palette.background.paper,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+          <ListItem
+            key={page._id}
+            sx={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: 2,
+              flexWrap: 'wrap',
+              fontStyle: page.isStart ? 'bold' : 'normal',
+            }}
+          >
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <ListItemText
+                primary={page.title}
+                secondary={page.content}
+                secondaryTypographyProps={{ whiteSpace: 'pre-line' }}
+                sx={{
+
+                  fontStyle: page.isStart ? 'italic' : 'normal',
+                }}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: '120px' }}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => onPageUpdated(page)}
+              >
+                Редактировать
+              </Button>
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={() => handleDelete(page._id)}
+              >
+                Удалить
+              </Button>
+              <Button 
+                variant="contained"
+                color="secondary"
+                onClick={() => handleSetStart(page._id)}
+              >
+                Сделать началом
+              </Button>
+            </Box>
+          </ListItem>
+          </Box>
+        ))}
+      </List>
+    </Box>
+  );
+};
+
+export default QuestPageList;
+
+        
+/* ./frontend/src/components/QuestTree.js */
+import { Box, Button, Stack, useTheme } from '@mui/material';
+import React, { useRef, useEffect, useState } from 'react';
+import Tree from 'react-d3-tree';
+
+const QuestTree = ({ pages }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+  const containerRef = useRef(null);
+  const svgRef = useRef(null); // 👈 Сохраняем ref на svg
+
+  const [dimensions, setDimensions] = useState({ width: 1000, height: 1000 });
+
+  useEffect(() => {
+    if (containerRef.current) {
+      const { offsetWidth, offsetHeight } = containerRef.current;
+      setDimensions({ width: offsetWidth, height: offsetHeight });
+    }
+  }, []);
+
+  const buildTree = (pages) => {
+    const pageMap = new Map();
+    const childRefs = new Set();
+
+    pages.forEach((page) => {
+      pageMap.set(page._id, { ...page, children: [] });
+    });
+
+    const buildNode = (id, visited = new Set()) => {
+      if (!pageMap.has(id)) return null;
+      if (visited.has(id)) {
+        return {
+          _id: id,
+          title: `(loop) ${pageMap.get(id).title}`,
+          children: [],
+        };
+      }
+
+      const node = pageMap.get(id);
+      const newNode = {
+        _id: node._id,
+        title: node.title,
+        children: [],
+      };
+
+      visited.add(id);
+
+      if (node.choices?.length > 0) {
+        node.choices.forEach((choice) => {
+          if (choice.nextPage && pageMap.has(choice.nextPage)) {
+            childRefs.add(choice.nextPage);
+            const childNode = buildNode(choice.nextPage, new Set(visited));
+            if (childNode) {
+              newNode.children.push(childNode);
+            }
+          }
+        });
+      }
+
+      return newNode;
+    };
+
+    const rootNodes = [];
+    pages.forEach((page) => {
+      if (!childRefs.has(page._id)) {
+        const rootNode = buildNode(page._id);
+        if (rootNode) rootNodes.push(rootNode);
+      }
+    });
+
+    if (rootNodes.length === 0) {
+      return pages.map((page) => buildNode(page._id));
+    }
+
+    return rootNodes;
+  };
+
+  const treeData = buildTree(pages);
+
+  const handleDownloadFullSVG = () => {
+    const originalSvg = svgRef.current?.querySelector('svg');
+    if (!originalSvg) {
+      console.warn('SVG not found');
+      return;
+    }
+
+    const g = originalSvg.querySelector('g');
+    if (!g) {
+      console.warn('<g> not found in SVG');
+      return;
+    }
+
+    const clonedSvg = originalSvg.cloneNode(true);
+    clonedSvg.style.filter = 'none';
+
+    const clonedG = clonedSvg.querySelector('g');
+    clonedG.removeAttribute('transform');
+
+    // ❌ Удаляем все marker-end
+    clonedSvg.querySelectorAll('[marker-end]').forEach(el => {
+      el.removeAttribute('marker-end');
+    });
+
+    // ❌ Удаляем все <defs> с marker
+    clonedSvg.querySelectorAll('defs').forEach(defs => {
+      defs.parentNode.removeChild(defs);
+    });
+
+    // ✅ Альтернативно: удалить все <path> с определённым классом, если нужны
+    // clonedSvg.querySelectorAll('path').forEach(path => {
+    //   if (path.getAttribute('marker-end')) {
+    //     path.remove();
+    //   }
+    // });
+
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'fixed';
+    tempContainer.style.left = '-9999px';
+    tempContainer.appendChild(clonedSvg);
+    document.body.appendChild(tempContainer);
+
+    const bbox = clonedG.getBBox();
+    const padding = 100;
+    const width = bbox.width + 2 * padding;
+    const height = bbox.height + 2 * padding;
+
+    clonedSvg.setAttribute('width', width);
+    clonedSvg.setAttribute('height', height);
+    clonedSvg.setAttribute(
+      'viewBox',
+      `${bbox.x - padding} ${bbox.y - padding} ${width} ${height}`
+    );
+
+    const serializer = new XMLSerializer();
+    const source = serializer.serializeToString(clonedSvg);
+    const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'quest-tree-full.svg';
+    link.click();
+    URL.revokeObjectURL(url);
+
+    document.body.removeChild(tempContainer);
+  };
+
+
+  return (
+  <Stack spacing={2}>
+    <Button variant="contained" onClick={handleDownloadFullSVG}>
+      Скачать полное дерево (SVG)
+    </Button>
+
+    <Box
+      ref={containerRef}
+      sx={{
+        width: '100%',
+        minHeight: '1500px',
+        height: 'auto',
+        filter: isDark ? 'invert(1) hue-rotate(180deg)' : 'none',
+        overflow: 'auto',
+        padding: 2,
+      }}
+    >
+      <div ref={svgRef}>
+        <Tree
+          data={treeData}
+          orientation="vertical"
+          translate={{ x: dimensions.width / 2, y: 100 }}
+          pathFunc="step"
+          collapsible={false}
+          nodeSize={{ x: 300, y: 200 }}
+          renderCustomNodeElement={({ nodeDatum }) => (
+            <g>
+              <circle r="15" fill="#076" />
+              <text
+                x="20"
+                y="5"
+                style={{
+                  fill: "#111",
+                  fontWeight: "bold",
+                  strokeWidth: 0,
+                }}
+              >
+                {nodeDatum.title}
+              </text>
+            </g>
+          )}
+        />
+      </div>
+    </Box>
+  </Stack>
+);
+};
+
+export default QuestTree;
+
+        
+/* ./frontend/src/components/RegisterForm.js */
+import React, { useState } from 'react';
+import { TextField, Button, Box, Typography, useTheme } from '@mui/material';
+import authService from '../services/authService';
+import { useNavigate } from 'react-router-dom';
+
+const RegisterForm = ({ onRegister }) => {
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const userData = { username, email, password };
+      //const response = await authService.register(userData);
+      onRegister(userData); 
+      setError('');
+    } catch (error) {
+      setError('Ошибка при регистрации');
+      console.error(error);
+    }
+  };
+
+  return (
+    <Box
+      component="form"
+      onSubmit={handleSubmit}
+      sx={{
+        mt: 8,
+        mx: 'auto',
+        maxWidth: 400,
+        border: '1px solid black',
+        px: 4,
+        py: 5,
+        backgroundColor: theme.palette.background.paper,
+      }}
+    >
+      <Typography variant="h2" align="center" gutterBottom>
+        Регистрация
+      </Typography>
+
+      {error && (
+        <Typography color="error" align="center" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
+
+      <TextField
+        label="Имя пользователя"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        fullWidth
+        required
+        margin="normal"
+        variant="outlined"
+      />
+
+      <TextField
+        label="Email"
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        fullWidth
+        required
+        margin="normal"
+        variant="outlined"
+      />
+
+      <TextField
+        label="Пароль"
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        fullWidth
+        required
+        margin="normal"
+        variant="outlined"
+      />
+
+      <Button
+        type="submit"
+        variant="outlined"
+        fullWidth
+        sx={{
+          mt: 3,
+          py: 1.5,
+          borderRadius: 0,
+        }}
+      >
+        Зарегистрироваться
+      </Button>
+
+      <Button
+        variant="text"
+        fullWidth
+        sx={{
+          mt: 2,
+          py: 1,
+          textTransform: 'none',
+          fontSize: '0.9rem',
+        }}
+        onClick={() => navigate('/login')}
+      >
+        Уже есть аккаунт? Войти
+      </Button>
+    </Box>
+  );
+};
+
+export default RegisterForm;
+        
+/* ./frontend/src/context/AuthContext.js */
+import React, { createContext, useState, useContext } from 'react';
+import authService from '../services/authService';
+
+const AuthContext = createContext();
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+
+  const register = async (userData) => {
+    const response = await authService.register(userData);
+    authService.setToken(response.token);
+    setUser(response.user);
+  };
+
+  const login = async (userData) => {
+    const response = await authService.login(userData);
+    authService.setToken(response.token);
+    setUser(response.user);
+  };
+
+  const logout = () => {
+    authService.removeToken();
+    setUser(null);
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, register, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => useContext(AuthContext);
+        
+<!-- ./frontend/src/index.css -->
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+        
+/* ./frontend/src/index.js */
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css';
+import App from './App';
+import reportWebVitals from './reportWebVitals';
+import { AuthProvider } from './context/AuthContext';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <React.StrictMode>
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  </React.StrictMode>
+);
+
+// If you want to start measuring performance in your app, pass a function
+// to log results (for example: reportWebVitals(console.log))
+// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
+reportWebVitals();
+        
+/* ./frontend/src/pages/LoginPage.js */
+import React from 'react';
+import LoginForm from '../components/LoginForm';
+import { Container } from '@mui/material';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+
+const LoginPage = () => {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogin = async (userData) => {
+    await login(userData);
+    navigate('/');
+  };
+
+  return (
+    <Container>
+      {/* <Typography variant="h4" gutterBottom>
+        Вход
+      </Typography> */}
+      <LoginForm onLogin={handleLogin} />
+    </Container>
+  );
+};
+
+export default LoginPage;
+        
+/* ./frontend/src/pages/QuestPagesPage.js */
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import QuestPageList from '../components/QuestPageList';
+import QuestPageForm from '../components/QuestPageForm';
+import QuestTree from '../components/QuestTree';
+import { Container, Typography, Tabs, Tab, Box, Button } from '@mui/material';
+import pageService from '../services/pageService';
+import { useNavigate } from 'react-router-dom';
+
+const QuestPagesPage = () => {
+  const { questId } = useParams();
+  const [pages, setPages] = useState([]);
+  const [editingPage, setEditingPage] = useState(null);
+  const [tabValue, setTabValue] = useState(0);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchPages = async () => {
+      try {
+        const data = await pageService.getPages(questId);
+        setPages(data);
+      } catch (error) {
+        console.error('Ошибка при загрузке страниц:', error);
+      }
+    };
+    fetchPages();
+  }, [questId]);
+
+  const handlePageCreated = (newPage) => {
+    setPages([...pages, newPage]);
+  };
+
+  const handlePageUpdated = (updatedPage) => {
+    setPages(pages.map((page) => (page._id === updatedPage._id ? updatedPage : page)));
+    setEditingPage(null); 
+  };
+
+  const handlePageDeleted = (id) => {
+    setPages(pages.filter((page) => page._id !== id));
+  };
+
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
+  const handleSetStart = (updatedPage) => {
+    setPages(pages.map((page) => (page._id === updatedPage._id ? updatedPage : page)));
+  }; 
+  
+  return (
+    <Container>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} mt={1}>
+        <Typography variant="h4">
+          Страницы квеста
+        </Typography>
+        <Button color="primary" onClick={() => navigate('/')} variant="outlined">
+          На главную
+        </Button>
+      </Box>
+
+      <Tabs value={tabValue} onChange={handleTabChange}>
+        <Tab label="Список страниц" />
+        <Tab label="Дерево страниц" />
+      </Tabs>
+      
+      <Box sx={{ mt: 2 }}>
+        {tabValue === 0 && (
+          <>
+            <QuestPageForm
+              questId={questId}
+              onPageCreated={handlePageCreated}
+              editingPage={editingPage}
+              onPageUpdated={handlePageUpdated}
+              pages={pages}
+            />
+            <QuestPageList
+              pages={pages}
+              onPageDeleted={handlePageDeleted}
+              onPageUpdated={setEditingPage}
+              onSetStart={ handleSetStart }
+            />
+          </>
+        )}
+        {tabValue === 1 && <QuestTree pages={pages} />}
+      </Box>
+    </Container>
+  );
+};
+
+export default QuestPagesPage;
+        
+/* ./frontend/src/pages/QuestsPage.js */
+import React, { useState, useEffect } from 'react';
+import QuestList from '../components/QuestList';
+import QuestForm from '../components/QuestForm';
+import { Container, Box, Typography } from '@mui/material';
+import questService from '../services/questService';
+import Header from '../components/Header';
+import authService from '../services/authService';
+import { Navigate, useNavigate } from 'react-router-dom';
+
+const QuestsPage = () => {
+  const [quests, setQuests] = useState([]);
+  const [editingQuest, setEditingQuest] = useState(null);
+  const navigate = useNavigate();
+  useEffect(() => {
+    const fetchQuests = async () => {
+      try {
+        const data = await questService.getQuests();
+        setQuests(data);
+      } catch (error) {
+        console.error('Ошибка при загрузке квестов:', error);
+      }
+    };
+    fetchQuests();
+  }, []);
+
+  const handleQuestCreated = (newQuest) => {
+    setQuests([...quests, newQuest]);
+  };
+
+  const handleQuestDeleted = (id) => {
+    setQuests(quests.filter((quest) => quest._id !== id));
+  };
+
+  const handleQuestUpdated = (updatedQuest) => {
+    setQuests(quests.map((quest) => (quest._id === updatedQuest._id ? updatedQuest : quest)));
+    setEditingQuest(null); 
+  };
+
+  return (
+    <Container sx={{ maxWidth: 1200, mt: 3 }}>
+      <Header isAuthenticated={localStorage.getItem("token")} onLogout={() => {
+        localStorage.removeItem("token");
+        navigate('/');
+        }}/>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+      </Box>
+      <QuestForm
+        onQuestCreated={handleQuestCreated}
+        editingQuest={editingQuest}
+        onQuestUpdated={handleQuestUpdated}
+      />
+      <QuestList
+        quests={quests}
+        onQuestDeleted={handleQuestDeleted}
+        onQuestUpdated={setEditingQuest}
+      />
+    </Container>
+  );
+};
+
+export default QuestsPage;
+        
+/* ./frontend/src/pages/RegisterPage.js */
+import React from 'react';
+import RegisterForm from '../components/RegisterForm';
+import { Container } from '@mui/material';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+
+const RegisterPage = () => {
+  const { register } = useAuth();
+  const navigate = useNavigate();
+
+  const handleRegister = async (userData) => {
+    await register(userData);
+    navigate('/'); 
+  };
+
+  return (
+    <Container>
+      {/* <Typography variant="h4" gutterBottom>
+        Регистрация
+      </Typography> */}
+      <RegisterForm onRegister={handleRegister} />
+    </Container>
+  );
+};
+
+export default RegisterPage;
+        
+/* ./frontend/src/pages/UserProfilePage.js */
+import React, { useEffect, useState } from 'react';
+import api from '../services/api';
+import {
+  Box, Typography, List, ListItem, Collapse, IconButton, Paper
+} from '@mui/material';
+import { ExpandLess, ExpandMore } from '@mui/icons-material';
+
+const UserProfilePage = () => {
+  const [profile, setProfile] = useState(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const { data } = await api.get('/users/profile');
+        setProfile(data);
+      } catch (error) {
+        console.error('Ошибка загрузки профиля:', error);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  if (!profile) return <Typography>Загрузка...</Typography>;
+
+  return (
+    <Paper sx={{ p: 4, maxWidth: 600, mx: 'auto', mt: 4 }}>
+      <Typography variant="h4" gutterBottom>Профиль пользователя</Typography>
+      <Typography><strong>Имя:</strong> {profile.username}</Typography>
+      <Typography><strong>Email:</strong> {profile.email}</Typography>
+      <Typography><strong>Квестов:</strong> {profile.questCount}</Typography>
+      <Typography><strong>Всего страниц:</strong> {profile.pageCount}</Typography>
+
+      <Box mt={2}>
+        <Typography variant="h6">
+          <IconButton onClick={() => setOpen(!open)}>
+            {open ? <ExpandLess /> : <ExpandMore />}
+          </IconButton>
+          Мои квесты
+        </Typography>
+        <Collapse in={open}>
+          <List>
+            {profile.quests.map((quest) => (
+              <ListItem key={quest.id}>{quest.title}</ListItem>
+            ))}
+          </List>
+        </Collapse>
+      </Box>
+    </Paper>
+  );
+};
+
+export default UserProfilePage;
+
+        
+/* ./frontend/src/reportWebVitals.js */
+const reportWebVitals = onPerfEntry => {
+  if (onPerfEntry && onPerfEntry instanceof Function) {
+    import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
+      getCLS(onPerfEntry);
+      getFID(onPerfEntry);
+      getFCP(onPerfEntry);
+      getLCP(onPerfEntry);
+      getTTFB(onPerfEntry);
+    });
+  }
+};
+
+export default reportWebVitals;
+
+        
+/* ./frontend/src/services/api.js */
+import axios from 'axios';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5005/api';
+
+const api = axios.create({
+    baseURL: API_URL,
+    headers:{
+        'Content-Type': 'application/json',
+    },
+});
+
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
+export default api;
+        
+/* ./frontend/src/services/authService.js */
+import api from './api';
+
+const authService = {
+  register: async (userData) => {
+    console.log('Отправка запроса регистрации');
+    try {
+      if (!userData.username || !userData.email || !userData.password) {
+        throw new Error('Не все поля заполнены');
+      }
+
+      const response = await api.post('/auth/register', userData);
+      console.log('Успешная регистрация:', response.data);
+
+      if (response.data.token) {
+        authService.setToken(response.data.token);
+      }
+
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.message || error.message;
+      console.error('Ошибка регистрации:', message);
+      throw error;
+    }
+  },
+
+  login: async (userData) => {
+    try {
+      if (!userData.email || !userData.password) {
+        throw new Error(`Не все поля заполнены`);
+      }
+      const response = await api.post('/auth/login', userData);
+      console.log('Успешная авторизация:', response.data);
+
+      if (response.data.token) {
+        authService.setToken(response.data.token);
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка авторизации:', error.response?.data || error.message);
+      throw error; 
+    }
+  },
+
+  setToken: (token) => {
+    localStorage.setItem('token', token);
+  },
+
+  getToken: () => {
+    return localStorage.getItem('token');
+  },
+
+  removeToken: () => {
+    localStorage.removeItem('token');
+  },
+};
+
+export default authService;
+        
+/* ./frontend/src/services/pageService.js */
+import api from './api';
+
+const pageService = {
+  getPages: async (questId) => {
+    const response = await api.get(`/pages/${questId}`);
+    return response.data;
+  },
+
+  createPage: async (pageData) => {
+    const response = await api.post('/pages', pageData);
+    return response.data;
+  },
+
+  updatePage: async (id, pageData) => {
+    const response = await api.put(`/pages/${id}`, pageData);
+    return response.data;
+  },
+
+  deletePage: async (id) => {
+    const response = await api.delete(`/pages/${id}`);
+    return response.data;
+  },
+
+  setStart: async (id) => {
+    const response = await api.patch(`/pages/${id}/start`);
+    return response.data;
+  },
+};
+
+export default pageService;
+        
+/* ./frontend/src/services/questService.js */
+import api from './api'
+
+const questService = {
+    getQuests: async () => {
+        try {
+            const response = await api.get('/quests');
+            return response.data;
+        } catch (error) {
+            console.error("Error in getQuests: ", error);
+            throw error;
+        }
+    },
+    
+    createQuest: async (questData) => {
+        try {
+            const response = await api.post('/quests', questData);
+            return response.data;
+        } catch (error) {
+            console.error("Error in creatQuests: ", error);
+            throw error;
+        }
+    },
+
+    updateQuest: async (id, questData) => {
+        try {
+            const response = await api.put(`/quests/${id}`, questData);
+            return response.data;
+        } catch (error) {
+            console.error(`Error in updateQuest with id ${id}: `, error);
+            throw error;
+        }
+    },
+
+    deleteQuest: async (id) => {
+        try {
+            const response = await api.delete(`/quests/${id}`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error in deleteQuests with id ${id}`, error);
+            throw error;
+        }
+    }
+};
+
+export default questService;
+        
+/* ./frontend/src/setupTests.js */
+// jest-dom adds custom jest matchers for asserting on DOM nodes.
+// allows you to do things like:
+// expect(element).toHaveTextContent(/react/i)
+// learn more: https://github.com/testing-library/jest-dom
+import '@testing-library/jest-dom';
+
+        
+/* ./frontend/src/theme/theme.js */
+import { createTheme } from '@mui/material/styles';
+import { grey } from '@mui/material/colors';
+
+const getNewspaperTheme = (mode = 'light') =>
+  createTheme({
+    palette: {
+      mode,
+      primary: {
+        main: mode === 'light' ? '#000000' : '#ffffff',
+      },
+      background: {
+        default: mode === 'light' ? '#ffffff' : '#121212',
+        paper: mode === 'light' ? '#f5f5f5' : '#1e1e1e',
+      },
+      text: {
+        primary: mode === 'light' ? '#000000' : '#ffffff',
+        secondary: mode === 'light' ? '#333333' : grey[400],
+      },
+    },
+    typography: {
+      fontFamily: '"Playfair Display", "Roboto Slab", serif',
+      h1: {
+        fontSize: '2.5rem',
+        fontWeight: 700,
+        textTransform: 'uppercase',
+        borderBottom: `2px solid ${mode === 'light' ? '#000' : '#fff'}`,
+        paddingBottom: '0.5rem',
+        marginBottom: '1rem',
+      },
+      h2: {
+        fontSize: '2rem',
+        fontWeight: 600,
+      },
+      body1: {
+        fontSize: '1rem',
+        lineHeight: 1.6,
+        color: mode === 'light' ? '#000' : '#fff', // Добавлен цвет текста для body1
+      },
+    },
+    components: {
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            border: `1px solid ${mode === 'light' ? '#000' : '#fff'}`,
+            boxShadow: 'none',
+            backgroundColor: mode === 'light' ? '#fff' : '#1e1e1e',
+            color: mode === 'light' ? '#000' : '#fff',
+          },
+        },
+      },
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            border: `1px solid ${mode === 'light' ? '#000' : '#fff'}`,
+            borderRadius: 0,
+            boxShadow: 'none',
+            backgroundColor: mode === 'light' ? '#fff' : '#333', // Button background color changes based on theme
+            color: mode === 'light' ? '#000' : '#fff',
+            '&:hover': {
+              backgroundColor: mode === 'light' ? grey[200] : grey[800],
+            },
+          },
+        },
+      },
+      MuiTextField: {
+        styleOverrides: {
+          root: {
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 0,
+              backgroundColor: mode === 'light' ? '#fff' : '#333', // Textfield background color changes based on theme
+              '& fieldset': {
+                borderColor: mode === 'light' ? '#000' : '#fff',
+              },
+              '&:hover fieldset': {
+                borderColor: mode === 'light' ? '#000' : '#ddd',
+              },
+            },
+            '& .MuiInputLabel-root': {
+              color: mode === 'light' ? '#000' : '#ccc',
+            },
+          },
+        },
+      },
+    },
+  });
+
+export default getNewspaperTheme;
+
+        
