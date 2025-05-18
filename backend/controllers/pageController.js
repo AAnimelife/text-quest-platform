@@ -1,3 +1,4 @@
+const { NotBeforeError } = require('jsonwebtoken');
 const QuestPage = require('../models/QuestPage');
 
 const createPage = async (req, res) => {
@@ -65,4 +66,28 @@ const deletePage = async (req, res) => {
     }
 };
 
-module.exports = { createPage, getPages, updatePage, deletePage };
+const setStart = async (req, res) => {
+    try {
+        
+        const { id } = req.params;
+        
+        const page = await QuestPage.findById(id);
+        if (!page) {
+            return res.status(404).json({ message: 'Page not found :(' });
+        }
+
+        await QuestPage.findOneAndUpdate(
+            { isStart: true },
+            { isStart: false },
+        );
+
+        page.isStart = true;
+        await page.save();
+        res.status(200).json({ message: 'Page was deleted' });
+        
+    } catch (error) {
+        res.status(500).json({ message: 'Error while set startn page', error: error.message });
+    }
+};
+
+module.exports = { createPage, getPages, updatePage, deletePage, setStart };

@@ -20,6 +20,11 @@ const pageService = {
     const response = await api.delete(`/pages/${id}`);
     return response.data;
   },
+
+  setStart: async (id) => {
+    const response = await api.patch(`/pages/${id}/start`);
+    return response.data;
+  },
 };
 
 export default pageService;

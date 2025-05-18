@@ -9,6 +9,8 @@ import getNewspaperTheme, { theme } from './theme/theme';
 import { ThemeProvider } from '@emotion/react';
 import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { CssBaseline, IconButton } from '@mui/material';
+import UserProfilePage from './pages/UserProfilePage';
+
 function App() {
   const [mode, setMode] = useState('light');
 
@@ -42,6 +44,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <QuestPagesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <UserProfilePage />
               </ProtectedRoute>
             }
           />
