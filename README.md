@@ -85,26 +85,24 @@ npx jest
 
 Используется: fast-check
 ## 📁 Структура проекта
+    backend/
+    ├── controllers/
+    ├── middleware/
+    ├── models/
+    ├── routes/
+    ├── __fuzz_\_/       
+    ├── app.js
+    ├── server.js
+    └── .env
+    frontend/
+    ├── src/
+    │   ├── pages/
+    │   ├── components/
+    │   ├── context/
+    │   ├── services/
+    │   └── App.js
+    └── public/
 
-
-backend/
-├── controllers/
-├── middleware/
-├── models/
-├── routes/
-├── __fuzz_\_/       
-├── app.js
-├── server.js
-└── .env
-
-frontend/
-├── src/
-│   ├── pages/
-│   ├── components/
-│   ├── context/
-│   ├── services/
-│   └── App.js
-└── public/
 
 ## 🔐 Безопасность
 
