@@ -90,7 +90,7 @@ npx jest
     ├── middleware/
     ├── models/
     ├── routes/
-    ├── __fuzz_\_/       
+    ├── __fuzz__/       
     ├── app.js
     ├── server.js
     └── .env
