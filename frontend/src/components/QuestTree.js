@@ -145,7 +145,7 @@ const QuestTree = ({ pages }) => {
 
 
   return (
-  <Stack spacing={2}>
+  <Stack spacing={2} sx={{height: "100%"}}>
     <Button variant="contained" onClick={handleDownloadFullSVG}>
       Скачать полное дерево (SVG)
     </Button>
@@ -154,23 +154,25 @@ const QuestTree = ({ pages }) => {
       ref={containerRef}
       sx={{
         width: '100%',
-        minHeight: '1500px',
-        height: 'auto',
+        height: '850px',
         filter: isDark ? 'invert(1) hue-rotate(180deg)' : 'none',
         overflow: 'auto',
         padding: 2,
       }}
     >
-      <div ref={svgRef}>
-        <Tree
+      <Box ref={svgRef} sx={{height:"100%"}}>
+        <Tree 
+          sx={{
+            height:"100%"
+          }}
           data={treeData}
           orientation="vertical"
           translate={{ x: dimensions.width / 2, y: 100 }}
           pathFunc="straight"
           collapsible={false}
-          nodeSize={{ x: 300, y: 400 }}
+          nodeSize={{ x: 170, y: 100 }}
           renderCustomNodeElement={({ nodeDatum }) => (
-            <g>
+            <g style={{height: "100%"}}>
               <circle r="15" fill="#076" />
               <text
                 x="20"
@@ -186,7 +188,7 @@ const QuestTree = ({ pages }) => {
             </g>
           )}
         />
-      </div>
+      </Box>
     </Box>
   </Stack>
 );
