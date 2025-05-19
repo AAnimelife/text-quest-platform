@@ -5,15 +5,12 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 
 dotenv.config();
-const cors = require('cors');
-
 app.use(cors({
-  origin: ['https://text-quest-platform-main.onrender.com/'],
+  origin: ['https://text-quest-platform-main.onrender.com'],
   credentials: true
 }));
 
 const app = express();
-app.use(cors());
 app.use(express.json());
 
 app.use('/api/auth', require('./routes/authRoutes'));
