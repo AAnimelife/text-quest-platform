@@ -12,15 +12,15 @@ const QuestPageList = ({ pages, onPageDeleted, onSetStart, onPageUpdated }) => {
       console.error('Ошибка при удалении страницы:', error);
     }
   };
-  const handleSetStart = async (id) => {
-    try {
-      const new_page = await pageService.setStart(id);
-      onSetStart(new_page);
-    }
-    catch (error) {
-      console.error('Ошибка при задании стартовой страницы: ', error);
-    }
-  };
+  // const handleSetStart = async (id) => {
+  //   try {
+  //     const new_page = await pageService.setStart(id);
+  //     onSetStart(new_page);
+  //   }
+  //   catch (error) {
+  //     console.error('Ошибка при задании стартовой страницы: ', error);
+  //   }
+  // };
 
   return (
     <Box sx={{ mt: 4 }}>
@@ -78,13 +78,13 @@ const QuestPageList = ({ pages, onPageDeleted, onSetStart, onPageUpdated }) => {
               >
                 Удалить
               </Button>
-              <Button 
+              {/* <Button 
                 variant="contained"
                 color="secondary"
                 onClick={() => handleSetStart(page._id)}
               >
                 Сделать началом
-              </Button>
+              </Button> */}
             </Box>
           </ListItem>
           </Box>
