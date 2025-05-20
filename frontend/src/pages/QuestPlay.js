@@ -48,7 +48,10 @@ const QuestPlay = () => {
   if (!quest || !currentPage) {
     return (
       <Box sx={{ mt: 10, textAlign: 'center' }}>
-        <Typography variant="h6">Квест не найден или стартовая страница отсутствует.</Typography>
+        <Typography variant="h6">Квест не найден или стартовая страница отсутствует.
+
+          <li>Или вы не авторизованы =)</li>
+        </Typography>
       </Box>
     );
   }
