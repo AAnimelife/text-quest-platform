@@ -10,6 +10,17 @@ const questService = {
             throw error;
         }
     },
+
+    getQuest: async (questId) => {
+        try {
+            const response = await api.get(`/quests/${questId}`);
+            return response.data;
+        } catch (error) {
+            console.error("Error in getQuest: ", error);
+            throw error;
+        }
+    },
+
     
     createQuest: async (questData) => {
         try {

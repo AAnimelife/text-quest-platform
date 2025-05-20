@@ -10,6 +10,7 @@ import { ThemeProvider } from '@emotion/react';
 import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { CssBaseline, IconButton } from '@mui/material';
 import UserProfilePage from './pages/UserProfilePage';
+import QuestPlay from './pages/QuestPlay';
 
 function App() {
   const [mode, setMode] = useState('light');
@@ -55,6 +56,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/quest/play/:questId" element={<QuestPlay />} />
         </Routes>
       </Router>
     </ThemeProvider>
