@@ -58,7 +58,7 @@ function App() {
           />
           <Route 
             path="/quest/play/:questId"
-            element={<ProtectedRoute><QuestPlay /></ProtectedRoute>} 
+            element={<QuestPlay />} 
           />
         </Routes>
       </Router>
