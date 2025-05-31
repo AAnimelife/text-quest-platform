@@ -13,20 +13,24 @@ import UserProfilePage from './pages/UserProfilePage';
 import QuestPlay from './pages/QuestPlay';
 
 function App() {
-  const [mode, setMode] = useState('light');
-
+  const [mode, setMode] = useState(localStorage.getItem('theme') || 'light');
   const theme = useMemo(() => getNewspaperTheme(mode), [mode]);
-
+  
   const toggleMode = () => {
-    setMode((prev) => (prev === 'light' ? 'dark' : 'light'));
+    setMode((prev) => {
+      const newMode = prev === 'light' ? 'dark' : 'light';
+      localStorage.setItem('theme', newMode);
+      return newMode;
+    });
   };
+
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline /> {/* Обеспечивает глобальные стили, включая фон */}
       <IconButton onClick={toggleMode} sx={{ mt: 2, ml: 2, }}>
           {mode === 'light' ? <Brightness4 /> : <Brightness7 />}
-        </IconButton>
+      </IconButton>
       <Router>
         <Routes>
           <Route path="/quests" element={<QuestsPage />} />

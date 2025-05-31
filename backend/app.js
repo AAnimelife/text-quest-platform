@@ -9,7 +9,7 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: ['https://text-quest-platform-main.onrender.com'],
+  origin: [ process.env.origin || 'https://text-quest-platform-main.onrender.com'],
   credentials: true
 }));
 

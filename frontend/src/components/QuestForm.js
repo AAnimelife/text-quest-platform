@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TextField, Button, Box, Typography, useTheme } from '@mui/material';
 import questService from '../services/questService';
 import GlobalVariablesForm from './GlobalVariablesForm';
+import { useSnackbar } from 'notistack';
 
 const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
   const [title, setTitle] = useState('');
@@ -10,6 +11,7 @@ const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
   const [error, setError] = useState('');
   const [globalVariables, setGlobalVariables] = useState({});
   const theme = useTheme();
+  const { enqueueSnackbar } = useSnackbar();
   useEffect(() => {
     if (editingQuest) {
       setTitle(editingQuest.title);
@@ -33,9 +35,11 @@ const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
       if (editingQuest) {
         const updatedQuest = await questService.updateQuest(editingQuest._id, questData);
         onQuestUpdated(updatedQuest);
+        enqueueSnackbar('Изменения сохранены!', { variant: 'success' });
       } else {
         const newQuest = await questService.createQuest(questData);
         onQuestCreated(newQuest);
+        enqueueSnackbar('Квест создан!', { variant: 'success' });
       }
 
       setTitle('');
@@ -44,7 +48,8 @@ const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
       setGlobalVariables({});
       setError('');
     } catch (error) {
-      setError('Ошибка при сохранении квеста');
+      enqueueSnackbar('Ошибка при сохранении квеста', { variant: 'error' });
+      setError('Ошибка при сохранении квеста', error.message);
       console.error(error);
     }
   };

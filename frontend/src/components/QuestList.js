@@ -2,15 +2,19 @@ import React from 'react';
 import { List, ListItem, ListItemText, Button, Typography, Box, Paper, useTheme } from '@mui/material';
 import questService from '../services/questService';
 import { useNavigate } from 'react-router-dom';
+import { useSnackbar } from 'notistack';
 
 const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
   const navigate = useNavigate();
   const theme = useTheme();
+  const { enqueueSnackbar } = useSnackbar();
   const handleDelete = async (id) => {
     try {
       await questService.deleteQuest(id);
       onQuestDeleted(id);
+      enqueueSnackbar('Квест успешно удален!', { variant: 'success' });
     } catch (error) {
+      enqueueSnackbar('Ошибка при удалении квеста!', { variant: 'error' });
       console.error('Ошибка при удалении квеста:', error);
     }
   };

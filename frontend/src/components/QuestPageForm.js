@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TextField, Button, Box, Typography, List, ListItem, IconButton, Select, MenuItem, useTheme } from '@mui/material';
 import { Add, Delete } from '@mui/icons-material';
 import pageService from '../services/pageService';
+import { useSnackbar } from 'notistack';
 
 const QuestPageForm = ({ questId, editingPage, onPageCreated, onPageUpdated, pages }) => {
   const [title, setTitle] = useState('');
@@ -10,6 +11,8 @@ const QuestPageForm = ({ questId, editingPage, onPageCreated, onPageUpdated, pag
   const [newChoiceText, setNewChoiceText] = useState('');
   const [error, setError] = useState('');
   const theme = useTheme();
+  const { enqueueSnackbar } = useSnackbar();
+
   useEffect(() => {
     if (editingPage) {
       setTitle(editingPage.title);
@@ -58,16 +61,20 @@ const QuestPageForm = ({ questId, editingPage, onPageCreated, onPageUpdated, pag
       if (editingPage) {
         const updatedPage = await pageService.updatePage(editingPage._id, pageData);
         onPageUpdated(updatedPage);
+        enqueueSnackbar('Страница изменена!', { variant: 'success' });
       } else {
         const newPage = await pageService.createPage(pageData);
         onPageCreated(newPage);
+        enqueueSnackbar('Страница создана!', { variant: 'success' });
       }
 
       setTitle('');
       setContent('');
       setChoices([]);
       setError('');
+      
     } catch (error) {
+      enqueueSnackbar('Ошибка при сохранении страницы', { variant: 'error' });
       setError('Ошибка при сохранении страницы');
       console.error(error);
     }

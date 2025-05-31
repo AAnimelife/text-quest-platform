@@ -1,4 +1,97 @@
 
+/* ./backend/__fuzz__/auth.fuzz.test.js */
+const request = require('supertest');
+const app = require('../app'); // обязательно app.js
+const fc = require('fast-check');
+
+describe('Fuzz testing /api/auth/login', () => {
+  it(
+    'should not crash on random email/password',
+    async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.string({ maxLength: 100 }), 
+          fc.string({ maxLength: 100 }),
+          async (email, password) => {
+            const res = await request(app)
+              .post('/api/auth/login')
+              .send({ email, password });
+
+            expect([200, 400, 401, 500]).toContain(res.statusCode);
+          }
+        ),
+        {
+          numRuns: 30,
+          endOnFailure: true,
+        }
+      );
+    },
+  );
+});
+
+        
+/* ./backend/__fuzz__/quest.fuzz.test.js */
+// backend/__fuzz__/quest.fuzz.test.js
+const request = require('supertest');
+const app = require('../app');
+const fc = require('fast-check');
+
+describe('Fuzz testing /api/quests', () => {
+  it('should handle malformed quest objects', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.string(),
+        fc.string(),
+        fc.array(fc.string()),
+        fc.object(),
+        async (title, description, tags, settings) => {
+          const token = 'FAKE_OR_VALID_JWT'; // Заменить на реальный или мок
+          const res = await request(app)
+            .post('/api/quests')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ title, description, tags, settings });
+
+          expect([201, 400, 401, 500]).toContain(res.statusCode);
+        }
+      ),
+      { numRuns: 50 }
+    );
+  });
+});
+
+const mongoose = require('mongoose');
+
+afterAll(async () => {
+  await mongoose.connection.close();
+});
+
+        
+/* ./backend/app.js */
+// backend/app.js
+const express = require('express');
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const cors = require('cors');
+
+dotenv.config();
+
+const app = express();
+
+app.use(cors({
+  origin: [ process.env.origin || 'https://text-quest-platform-main.onrender.com'],
+  credentials: true
+}));
+
+app.use(express.json());
+
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/quests', require('./routes/questRoutes'));
+app.use('/api/pages', require('./routes/pageRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
+
+module.exports = app;
+
+        
 /* ./backend/config/db.js */
 const mongoose = require('mongoose');
 
@@ -27,11 +120,11 @@ const register = async (req, res) => {
         const { username, email, password } = req.body;
 
         const existingEmail = await User.findOne({ email });
-        const existingUsername = await User.findOne({ username }); 
+        const existingUsername = await User.findOne({ username });
         if (existingEmail || existingUsername) {
             return res.status(400).json({ message: 'Пользователь уже существует' });
         }
-        
+
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = new User({
             username,
@@ -56,7 +149,7 @@ const login = async (req, res) => {
 
         const user = await User.findOne({ email });
 
-        if(!user) {
+        if (!user) {
             return res.status(400).json({ message: 'Пользователь не найден' });
         }
 
@@ -76,7 +169,26 @@ const login = async (req, res) => {
     }
 }
 
-module.exports = { register, login };
+const getMe = async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        if (!userId) {
+            return res.status(401).json({ message: 'Неавторизован' });
+        }
+
+        const user = await User.findById(userId).select('-password'); // не возвращаем пароль
+
+        if (!user) {
+            return res.status(404).json({ message: 'Пользователь не найден' });
+        }
+
+        res.json(user);
+    } catch (error) {
+        res.status(500).json({ message: 'get me error:', error: error.message });
+    }
+}
+module.exports = { register, login, getMe };
         
 /* ./backend/controllers/pageController.js */
 const { NotBeforeError } = require('jsonwebtoken');
@@ -175,7 +287,7 @@ module.exports = { createPage, getPages, updatePage, deletePage, setStart };
         
 /* ./backend/controllers/questController.js */
 const Quest = require('../models/Quest');
-
+const QuestPage = require('../models/QuestPage');
 const createQuest = async (req, res) => {
     try {
         const {title, description, tags, globalVariables, settings } = req.body;
@@ -190,9 +302,28 @@ const createQuest = async (req, res) => {
         });
 
         await quest.save();
+        console.log("aaa");
+        const startPage = new QuestPage({
+            questId: quest._id,
+            title: 'НАЧАЛО 1',
+            content: `Добро пожаловать в квест "${title}"!\n\n${description || 'Без описания.'}\n\nТеги: ${tags && tags.length > 0 ? tags.join(', ') : 'нет'}`,
+            choices: [
+                {
+                    text: 'Начать',
+                    nextPage: null,
+                    conditions: [],
+                    effects: [],
+                }
+            ],
+            isStart: true,
+        });
+        console.log("aaa");
+        await startPage.save();
+        quest.pages.push(startPage._id);
+        await quest.save();
         res.status(201).json(quest);
     } catch (error) {
-        res.status(500).json({ message: 'Error while create a quest: ', error: message });
+        res.status(500).json({ message: 'Error while create a quest: ', error: error.message });
     }
 };
 
@@ -200,6 +331,19 @@ const getQuests = async (req, res) => {
     try {
         const quests = await Quest.find({ author: req.user._id });
         res.status(200).json(quests);
+    } catch (error) {
+        res.status(500).json({ message: 'Error while get a quest', error: error.message });
+    }
+};
+
+const getQuest = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const quest = await Quest.findOne({ _id: id });
+        if (!quest) {
+            return res.status(404).json({ message: 'Quest not found :(' });
+        }
+        res.status(200).json(quest);
     } catch (error) {
         res.status(500).json({ message: 'Error while get a quest', error: error.message });
     }
@@ -273,7 +417,7 @@ const deleteQuest = async (req, res) => {
     } 
 };
 
-module.exports = { createQuest, getQuests, updateQuest, deleteQuest, updateQuestVariables };
+module.exports = { createQuest, getQuests, getQuest, updateQuest, deleteQuest, updateQuestVariables };
         
 /* ./backend/controllers/userController.js */
 const Quest = require('../models/Quest');
@@ -415,12 +559,49 @@ module.exports = mongoose.model('User', userSchema);
         
 /* ./backend/routes/authRoutes.js */
 const express = require('express');
-const { register, login } = require('../controllers/authController');
+const { register, login, getMe } = require('../controllers/authController');
+const { body, validationResult } = require('express-validator');
+const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-router.post('/register', register);
-router.post('/login', login);
+const validate = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  next();
+};
+
+router.post(
+  '/register',
+  [
+    body('username').isLength({ min: 3, max: 20 }).trim().notEmpty(),
+    body('email').isEmail().normalizeEmail(),
+    body('password').isStrongPassword({
+      minLength: 8,
+      minLowercase: 1,
+      minSymbols: 0,
+      minUppercase: 0,
+      minNumbers:1, 
+    }),
+  ],
+  validate,
+  register
+);
+
+router.get('/me', authMiddleware, getMe);
+
+router.post(
+  '/login',
+  [
+    body('email').isEmail()
+    // body('password').isLength({ min: 6 }),
+  ],
+  validate,
+  login
+);
+
 
 module.exports = router;
         
@@ -428,12 +609,25 @@ module.exports = router;
 const express = require('express');
 const authMiddleware = require('../middleware/authMiddleware');
 const { createPage, getPages, updatePage, deletePage, setStart } = require('../controllers/pageController');
-
+const { body, validationResult} = require('express-validator');
 const router = express.Router();
 
 router.use(authMiddleware);
 
-router.post('/', createPage);
+const validate = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  next();
+};
+
+router.post('/', [
+    body('questId'),
+    body('title').isLength({ min: 1, max: 100 }),
+    body('content'),
+    body('options'),
+], validate, createPage);
 router.get('/:questId', getPages);
 router.put('/:id', updatePage);
 router.delete('/:id', deletePage);
@@ -444,15 +638,35 @@ module.exports = router;
 /* ./backend/routes/questRoutes.js */
 const express = require('express');
 const authMiddleware = require('../middleware/authMiddleware');
-const { createQuest, getQuests, updateQuest, deleteQuest, updateQuestVariables } = require('../controllers/questController');
+const { createQuest, getQuests, getQuest, updateQuest, deleteQuest, updateQuestVariables } = require('../controllers/questController');
+const { body, param, validationResult} = require('express-validator');
 
 const router = express.Router();
 
 router.use(authMiddleware);
 
-router.post('/', createQuest);
+const validate = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  next();
+};
+
+router.post('/',[
+    body('title').isString().isLength({ min: 3, max: 100 }).trim().withMessage('Заголовок должен быть от 3 до 100 символов'),
+    body('description').optional().isString().isLength({ max: 500 }).withMessage('Тело должно быть до 500 символов'),
+    body('tags').optional().isArray(),
+    body('settings').optional().isObject(),
+], validate, createQuest);
+
 router.get('/', getQuests);
-router.put('/:id', updateQuest);
+router.get('/:id', getQuest);
+
+router.put('/:id', [
+    param('id').isMongoId(),
+], validate, updateQuest);
+
 router.delete('/:id', deleteQuest);
 router.patch('/:id/variables', updateQuestVariables);
 
@@ -472,34 +686,30 @@ module.exports = router;
 
         
 /* ./backend/server.js */
-const express = require('express');
+// backend/server.js
+const app = require('./app');
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
-const cors = require('cors');
-const { route } = require('./routes/userRoutes');
 
-dotenv.config();
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => {
+    const PORT = process.env.PORT || 5005;
+    app.listen(PORT, () => console.log(`Server started: localhost:${PORT}`));
+  })
+  .catch(err => console.log("MongoDB error:", err));
 
-const app = express();
+        
+/* ./backend/test-setup.js */
+// backend/test-setup.js
+const mongoose = require('mongoose');
+require('dotenv').config();
 
-app.use(cors());
-app.use(express.json());
+beforeAll(async () => {
+  await mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  });
+}, 15000); // Увеличенный таймаут для подключения
 
-mongoose.connect(process.env.MONGO_URI, {
-    // useNewUrlParser:true,
-    // useUnifiedTopology: true,
-})
-.then(() => console.log("MongoDB connected!"))
-.catch(err => console.log("Error to connect MongoDB:", err));
-
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/quests', require('./routes/questRoutes'));
-app.use('/api/pages', require('./routes/pageRoutes'));
-app.use('/api/users', require('./routes/userRoutes'));
-
-const PORT = process.env.PORT || 5005;
-
-app.listen(PORT, () => console.log(`Server started: localhost: ${PORT}`));
         
 <!-- ./frontend/public/index.html -->
 <!DOCTYPE html>
@@ -601,10 +811,10 @@ import { ThemeProvider } from '@emotion/react';
 import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { CssBaseline, IconButton } from '@mui/material';
 import UserProfilePage from './pages/UserProfilePage';
+import QuestPlay from './pages/QuestPlay';
 
 function App() {
   const [mode, setMode] = useState('light');
-
   const theme = useMemo(() => getNewspaperTheme(mode), [mode]);
 
   const toggleMode = () => {
@@ -616,7 +826,7 @@ function App() {
       <CssBaseline /> {/* Обеспечивает глобальные стили, включая фон */}
       <IconButton onClick={toggleMode} sx={{ mt: 2, ml: 2, }}>
           {mode === 'light' ? <Brightness4 /> : <Brightness7 />}
-        </IconButton>
+      </IconButton>
       <Router>
         <Routes>
           <Route path="/quests" element={<QuestsPage />} />
@@ -645,6 +855,10 @@ function App() {
                 <UserProfilePage />
               </ProtectedRoute>
             }
+          />
+          <Route 
+            path="/quest/play/:questId"
+            element={<QuestPlay />} 
           />
         </Routes>
       </Router>
@@ -961,9 +1175,18 @@ export default LogoutButton;
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Box, CircularProgress } from '@mui/material';
 
 const ProtectedRoute = ({ children }) => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <Box sx={{ mt: 10, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress size={60} />
+      </Box>
+    );
+  }
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -1021,7 +1244,7 @@ const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
       setGlobalVariables({});
       setError('');
     } catch (error) {
-      setError('Ошибка при сохранении квеста');
+      setError('Ошибка при сохранении квеста', error.message);
       console.error(error);
     }
   };
@@ -1113,63 +1336,80 @@ const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
       console.error('Ошибка при удалении квеста:', error);
     }
   };
-  
+
   return (
     <Box sx={{ mt: 3, mx: 'auto' }}>
       <Typography variant="h5" sx={{ mb: 2, color: theme.palette.text.primary }}>
         Список квестов
       </Typography>
       <List>
-  {quests.map((quest) => (
-    <Box
-      key={quest._id}
-      sx={{
-        mb: 2,
-        p: 2,
-        border: '1px solid black',
-        backgroundColor: theme.palette.background.paper,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}
-    >
-      <ListItemText
-        primary={quest.title}
-        secondary={quest.description}
-        sx={{
-          maxWidth: '45%',
-          overflow: 'hidden',
-          whiteSpace: 'nowrap',
-          textOverflow: 'ellipsis',
-        }}
-      />
-      <Box sx={{ display: 'flex', gap: 1 }}>
-        <Button
-          variant="outlined"
-          onClick={() => onQuestUpdated(quest)}
-          sx={{ borderRadius: 0 }}
-        >
-          Редактировать
-        </Button>
-        <Button
-          variant="outlined"
-          color="error"
-          onClick={() => handleDelete(quest._id)}
-          sx={{ borderRadius: 0 }}
-        >
-          Удалить
-        </Button>
-        <Button
-          variant="outlined"
-          onClick={() => navigate(`/quests/${quest._id}/pages`)}
-          sx={{ borderRadius: 0 }}
-        >
-          Страницы
-        </Button>
-      </Box>
-    </Box>
-  ))}
-</List>
+        {quests.map((quest) => (
+          <Box
+            key={quest._id}
+            sx={{
+              mb: 2,
+              p: 2,
+              border: '1px solid black',
+              backgroundColor: theme.palette.background.paper,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <ListItemText
+              primary={quest.title}
+              secondary={quest.description}
+              sx={{
+                maxWidth: '45%',
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                textOverflow: 'ellipsis',
+              }}
+            />
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                onClick={() => onQuestUpdated(quest)}
+                sx={{ borderRadius: 0 }}
+              >
+                Редактировать
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={() => handleDelete(quest._id)}
+                sx={{ borderRadius: 0 }}
+              >
+                Удалить
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => navigate(`/quests/${quest._id}/pages`)}
+                sx={{ borderRadius: 0 }}
+              >
+                Страницы
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  const questUrl = `${window.location.origin}/quest/play/${quest._id}`;
+                  navigator.clipboard.writeText(questUrl)
+                    .then(() => {
+                      console.log('Ссылка скопирована:', questUrl);
+                      // Можно также показать уведомление пользователю
+                    })
+                    .catch((err) => {
+                      console.error('Ошибка при копировании ссылки:', err);
+                    });
+                }}
+                sx={{ borderRadius: 0 }}
+              >
+                Копировать ссылку
+              </Button>
+            </Box>
+          </Box>
+        ))}
+      </List>
 
     </Box>
   );
@@ -1375,15 +1615,15 @@ const QuestPageList = ({ pages, onPageDeleted, onSetStart, onPageUpdated }) => {
       console.error('Ошибка при удалении страницы:', error);
     }
   };
-  const handleSetStart = async (id) => {
-    try {
-      const new_page = await pageService.setStart(id);
-      onSetStart(new_page);
-    }
-    catch (error) {
-      console.error('Ошибка при задании стартовой страницы: ', error);
-    }
-  };
+  // const handleSetStart = async (id) => {
+  //   try {
+  //     const new_page = await pageService.setStart(id);
+  //     onSetStart(new_page);
+  //   }
+  //   catch (error) {
+  //     console.error('Ошибка при задании стартовой страницы: ', error);
+  //   }
+  // };
 
   return (
     <Box sx={{ mt: 4 }}>
@@ -1441,13 +1681,13 @@ const QuestPageList = ({ pages, onPageDeleted, onSetStart, onPageUpdated }) => {
               >
                 Удалить
               </Button>
-              <Button 
+              {/* <Button 
                 variant="contained"
                 color="secondary"
                 onClick={() => handleSetStart(page._id)}
               >
                 Сделать началом
-              </Button>
+              </Button> */}
             </Box>
           </ListItem>
           </Box>
@@ -1458,6 +1698,39 @@ const QuestPageList = ({ pages, onPageDeleted, onSetStart, onPageUpdated }) => {
 };
 
 export default QuestPageList;
+
+        
+/* ./frontend/src/components/QuestPageView.js */
+import React from 'react';
+import { Box, Typography, Button, Paper } from '@mui/material';
+
+const QuestPageView = ({ page, onChoiceClick }) => {
+  return (
+    <Box elevation={3} sx={{ p: 3, backgroundColor: 'background.paper' }}>
+      <Typography variant="body1" sx={{ whiteSpace: 'pre-line', mb: 3 }}>
+        {page.content}
+      </Typography>
+
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {page.choices.map((choice, idx) => (
+          <Button
+            key={idx}
+            variant="contained"
+            color="primary"
+            disabled={!choice.nextPage}
+            onClick={() => onChoiceClick(choice)}
+            fullWidth
+            sx={{ borderRadius: 0 }}
+          >
+            {choice.text}
+          </Button>
+        ))}
+      </Box>
+    </Box>
+  );
+};
+
+export default QuestPageView;
 
         
 /* ./frontend/src/components/QuestTree.js */
@@ -1608,7 +1881,7 @@ const QuestTree = ({ pages }) => {
 
 
   return (
-  <Stack spacing={2}>
+  <Stack spacing={2} sx={{height: "100%"}}>
     <Button variant="contained" onClick={handleDownloadFullSVG}>
       Скачать полное дерево (SVG)
     </Button>
@@ -1617,23 +1890,25 @@ const QuestTree = ({ pages }) => {
       ref={containerRef}
       sx={{
         width: '100%',
-        minHeight: '1500px',
-        height: 'auto',
+        height: '850px',
         filter: isDark ? 'invert(1) hue-rotate(180deg)' : 'none',
         overflow: 'auto',
         padding: 2,
       }}
     >
-      <div ref={svgRef}>
-        <Tree
+      <Box ref={svgRef} sx={{height:"100%"}}>
+        <Tree 
+          sx={{
+            height:"100%"
+          }}
           data={treeData}
           orientation="vertical"
           translate={{ x: dimensions.width / 2, y: 100 }}
-          pathFunc="step"
+          pathFunc="straight"
           collapsible={false}
-          nodeSize={{ x: 300, y: 200 }}
+          nodeSize={{ x: 170, y: 100 }}
           renderCustomNodeElement={({ nodeDatum }) => (
-            <g>
+            <g style={{height: "100%"}}>
               <circle r="15" fill="#076" />
               <text
                 x="20"
@@ -1649,7 +1924,7 @@ const QuestTree = ({ pages }) => {
             </g>
           )}
         />
-      </div>
+      </Box>
     </Box>
   </Stack>
 );
@@ -1774,13 +2049,31 @@ const RegisterForm = ({ onRegister }) => {
 export default RegisterForm;
         
 /* ./frontend/src/context/AuthContext.js */
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import authService from '../services/authService';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const token = authService.getToken();
+      if (token) {
+        try {
+          const user = await authService.getCurrentUser();
+          setUser(user);
+        } catch (error) {
+          console.error('Ошибка при восстановлении пользователя:', error);
+          authService.removeToken();
+        }
+        setIsLoading(false);
+      }
+    };
+
+    initializeAuth();
+  }, []);
 
   const register = async (userData) => {
     const response = await authService.register(userData);
@@ -1800,7 +2093,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, register, login, logout }}>
+    <AuthContext.Provider value={{ user, register, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
@@ -1851,26 +2144,26 @@ import React from 'react';
 import LoginForm from '../components/LoginForm';
 import { Container } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from || '/';
 
   const handleLogin = async (userData) => {
     await login(userData);
-    navigate('/');
+    navigate(from); 
   };
 
   return (
     <Container>
-      {/* <Typography variant="h4" gutterBottom>
-        Вход
-      </Typography> */}
       <LoginForm onLogin={handleLogin} />
     </Container>
   );
 };
+
 
 export default LoginPage;
         
@@ -1965,6 +2258,105 @@ const QuestPagesPage = () => {
 };
 
 export default QuestPagesPage;
+        
+/* ./frontend/src/pages/QuestPlay.js */
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { Box, Typography, Button, Paper, CircularProgress } from '@mui/material';
+import questService from '../services/questService';
+import pageService from '../services/pageService';
+import QuestPageView from '../components/QuestPageView';
+
+const QuestPlay = () => {
+  const { questId } = useParams();
+  const [quest, setQuest] = useState(null);
+  const [pages, setPages] = useState([]);
+  const [currentPage, setCurrentPage] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const questData = await questService.getQuest(questId);
+        const pageData = await pageService.getPages(questId);
+        const startPage = pageData.find((p) => p.isStart);
+        setQuest(questData);
+        setPages(pageData);
+        setCurrentPage(startPage);
+      } catch (error) {
+        console.error('Ошибка загрузки данных:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [questId]);
+
+  const handleChoiceClick = (choice) => {
+    if (!choice.nextPage) return;
+    const nextPage = pages.find((p) => p._id === choice.nextPage);
+    setCurrentPage(nextPage);
+  };
+if (loading) {
+    return (
+      <Box sx={{ mt: 10, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress size={60} />
+      </Box>
+    );
+  }
+
+  if (!quest || !currentPage) {
+    return (
+      <Box sx={{ p: 4, maxWidth: 700, mx: 'auto' }}>
+        <Paper elevation={3} sx={{ p: 4 }}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Typography variant="h5" fontWeight="bold">
+              Что-то пошло не так
+            </Typography>
+            <Button color="primary" onClick={() => navigate('/')} variant="outlined">
+              На главную
+            </Button>
+          </Box>
+
+          {localStorage.getItem("token") ? (
+            <Typography variant="body1" color="text.secondary">
+              Квест не найден или стартовая страница отсутствует. Пожалуйста, проверьте ссылку или вернитесь на главную.
+            </Typography>
+          ) : (
+            <Box mt={2}>
+              <Typography variant="body1" color="text.secondary" mb={2}>
+                Вы не авторизованы. Чтобы начать прохождение квеста, пожалуйста, войдите в систему.
+              </Typography>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => navigate('/login', { state: { from: location.pathname } })}
+              >
+                Войти
+              </Button>
+            </Box>
+          )}
+        </Paper>
+      </Box>
+    );
+  }return (
+    <Box sx={{ mt: 4, maxWidth: 800, mx: 'auto' }}>
+      
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Typography variant="h4" gutterBottom textAlign="center">
+        {quest.title}
+      </Typography>
+        <Button color="primary" onClick={() => navigate('/')} variant="outlined">
+          На главную
+        </Button></Box>
+      <QuestPageView page={currentPage} onChoiceClick={handleChoiceClick} />
+    </Box>
+  );
+};
+
+export default QuestPlay;
         
 /* ./frontend/src/pages/QuestsPage.js */
 import React, { useState, useEffect } from 'react';
@@ -2061,14 +2453,15 @@ export default RegisterPage;
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import {
-  Box, Typography, List, ListItem, Collapse, IconButton, Paper
+  Box, Typography, List, ListItem, Button, Collapse, IconButton, Paper
 } from '@mui/material';
 import { ExpandLess, ExpandMore } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 
 const UserProfilePage = () => {
   const [profile, setProfile] = useState(null);
   const [open, setOpen] = useState(false);
-
+  const navigate = useNavigate();
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -2085,29 +2478,40 @@ const UserProfilePage = () => {
   if (!profile) return <Typography>Загрузка...</Typography>;
 
   return (
-    <Paper sx={{ p: 4, maxWidth: 600, mx: 'auto', mt: 4 }}>
-      <Typography variant="h4" gutterBottom>Профиль пользователя</Typography>
-      <Typography><strong>Имя:</strong> {profile.username}</Typography>
-      <Typography><strong>Email:</strong> {profile.email}</Typography>
-      <Typography><strong>Квестов:</strong> {profile.questCount}</Typography>
-      <Typography><strong>Всего страниц:</strong> {profile.pageCount}</Typography>
+    <Box>
+      
 
-      <Box mt={2}>
-        <Typography variant="h6">
-          <IconButton onClick={() => setOpen(!open)}>
-            {open ? <ExpandLess /> : <ExpandMore />}
-          </IconButton>
-          Мои квесты
-        </Typography>
-        <Collapse in={open}>
-          <List>
-            {profile.quests.map((quest) => (
-              <ListItem key={quest.id}>{quest.title}</ListItem>
-            ))}
-          </List>
-        </Collapse>
-      </Box>
-    </Paper>
+      <Paper sx={{ p: 4, maxWidth: "auto", ml: 3, mr: 3 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="left" >
+        <Typography variant="h4" gutterBottom>Профиль пользователя</Typography>
+        
+        <Button color="primary" onClick={() => navigate('/')} variant="outlined">
+          На главную
+        </Button>
+        </Box>
+        <Typography><strong>Имя:</strong> {profile.username}</Typography>
+        <Typography><strong>Email:</strong> {profile.email}</Typography>
+        <Typography><strong>Квестов:</strong> {profile.questCount}</Typography>
+        <Typography><strong>Всего страниц:</strong> {profile.pageCount}</Typography>
+
+        <Box mt={2}>
+          <Typography variant="h6">
+            <IconButton onClick={() => setOpen(!open)}>
+              {open ? <ExpandLess /> : <ExpandMore />}
+            </IconButton>
+            Мои квесты
+          </Typography>
+          <Collapse in={open}>
+            <List>
+              {profile.quests.map((quest) => (
+                <ListItem key={quest.id}>{quest.title}</ListItem>
+              ))}
+            </List>
+          </Collapse>
+        </Box>
+      </Paper>
+
+    </Box>
   );
 };
 
@@ -2133,7 +2537,10 @@ export default reportWebVitals;
 /* ./frontend/src/services/api.js */
 import axios from 'axios';
 
+
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5005/api';
+
+console.log('API_URL:', process.env.REACT_APP_API_URL);
 
 const api = axios.create({
     baseURL: API_URL,
@@ -2208,6 +2615,24 @@ const authService = {
   removeToken: () => {
     localStorage.removeItem('token');
   },
+
+  getCurrentUser: async () => {
+  const token = authService.getToken();
+  if (!token) throw new Error('Нет токена');
+
+  try {
+    const response = await api.get('/auth/me', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Ошибка получения текущего пользователя:', error.response?.data || error.message);
+    throw error;
+  }
+},
+
 };
 
 export default authService;
@@ -2257,6 +2682,17 @@ const questService = {
             throw error;
         }
     },
+
+    getQuest: async (questId) => {
+        try {
+            const response = await api.get(`/quests/${questId}`);
+            return response.data;
+        } catch (error) {
+            console.error("Error in getQuest: ", error);
+            throw error;
+        }
+    },
+
     
     createQuest: async (questData) => {
         try {

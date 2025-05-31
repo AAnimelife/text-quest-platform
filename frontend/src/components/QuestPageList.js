@@ -1,15 +1,19 @@
 import React from 'react';
 import { List, ListItem, ListItemText, Button, Typography, Box, useTheme } from '@mui/material';
 import pageService from '../services/pageService';
+import { useSnackbar } from 'notistack';
 
 const QuestPageList = ({ pages, onPageDeleted, onSetStart, onPageUpdated }) => {
   const theme = useTheme();
+  const { enqueueSnackbar } = useSnackbar();
   const handleDelete = async (id) => {
     try {
       await pageService.deletePage(id);
       onPageDeleted(id);
+      enqueueSnackbar('Страница удалена!', { variant: 'success' });
     } catch (error) {
       console.error('Ошибка при удалении страницы:', error);
+      enqueueSnackbar('Ошибка при удалении страницы!', { variant: 'error' });
     }
   };
   // const handleSetStart = async (id) => {

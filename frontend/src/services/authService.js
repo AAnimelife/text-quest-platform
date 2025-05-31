@@ -53,6 +53,24 @@ const authService = {
   removeToken: () => {
     localStorage.removeItem('token');
   },
+
+  getCurrentUser: async () => {
+  const token = authService.getToken();
+  if (!token) throw new Error('Нет токена');
+
+  try {
+    const response = await api.get('/auth/me', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Ошибка получения текущего пользователя:', error.response?.data || error.message);
+    throw error;
+  }
+},
+
 };
 
 export default authService;

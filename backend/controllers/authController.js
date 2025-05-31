@@ -7,11 +7,11 @@ const register = async (req, res) => {
         const { username, email, password } = req.body;
 
         const existingEmail = await User.findOne({ email });
-        const existingUsername = await User.findOne({ username }); 
+        const existingUsername = await User.findOne({ username });
         if (existingEmail || existingUsername) {
             return res.status(400).json({ message: 'Пользователь уже существует' });
         }
-        
+
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = new User({
             username,
@@ -36,7 +36,7 @@ const login = async (req, res) => {
 
         const user = await User.findOne({ email });
 
-        if(!user) {
+        if (!user) {
             return res.status(400).json({ message: 'Пользователь не найден' });
         }
 
@@ -56,4 +56,23 @@ const login = async (req, res) => {
     }
 }
 
-module.exports = { register, login };
+const getMe = async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        if (!userId) {
+            return res.status(401).json({ message: 'Неавторизован' });
+        }
+
+        const user = await User.findById(userId).select('-password'); // не возвращаем пароль
+
+        if (!user) {
+            return res.status(404).json({ message: 'Пользователь не найден' });
+        }
+
+        res.json(user);
+    } catch (error) {
+        res.status(500).json({ message: 'get me error:', error: error.message });
+    }
+}
+module.exports = { register, login, getMe };
