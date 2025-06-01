@@ -1,4 +1,4 @@
-name: Build Electron app
+name: Build Electron App
 
 on:
   push:
@@ -13,36 +13,43 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
+    defaults:
+      run:
+        shell: bash
+
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: npm
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
         run: npm ci
-        working-directory: ./desktop
+        working-directory: frontend
 
       - name: Build frontend
-        run: |
-          npm ci
-          npm run build
-        working-directory: ./frontend
+        run: npm run build
+        working-directory: frontend
 
-      - name: Copy frontend build to desktop
+      - name: Copy frontend build to Electron app
         run: |
-          rm -rf ./desktop/frontend
-          cp -r ./frontend/build ./desktop/frontend
+          rm -rf desktop/frontend
+          cp -r frontend/build desktop/frontend
+
+      - name: Install Electron app dependencies
+        run: npm ci
+        working-directory: desktop
 
       - name: Build Electron app
         run: npm run dist
-        working-directory: ./desktop
+        working-directory: desktop
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: app-${{ matrix.os }}
-          path: ./desktop/dist/
+          path: desktop/dist/
