@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import QuestList from '../components/QuestList';
 import QuestForm from '../components/QuestForm';
-import { Container, Box, Typography } from '@mui/material';
+import { Container, Box } from '@mui/material';
 import questService from '../services/questService';
 import Header from '../components/Header';
-import authService from '../services/authService';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const QuestsPage = () => {
   const [quests, setQuests] = useState([]);

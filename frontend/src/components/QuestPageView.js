@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Button, Paper } from '@mui/material';
+import { Box, Typography, Button } from '@mui/material';
 
 const QuestPageView = ({ page, onChoiceClick }) => {
   return (

@@ -9,8 +9,15 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: [ process.env.origin || 'https://text-quest-platform-main.onrender.com'],
-  credentials: true
+  origin: function (origin, callback) {
+    if (!origin || origin === 'null' || origin.startsWith('file://') || origin === 'https://text-quest-platform-main.onrender.com') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());

@@ -1,5 +1,5 @@
 import React from 'react';
-import { List, ListItem, ListItemText, Button, Typography, Box, Paper, useTheme } from '@mui/material';
+import { List, ListItemText, Button, Typography, Box, useTheme } from '@mui/material';
 import questService from '../services/questService';
 import { useNavigate } from 'react-router-dom';
 import { useSnackbar } from 'notistack';

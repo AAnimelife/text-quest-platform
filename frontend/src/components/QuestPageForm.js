@@ -72,7 +72,7 @@ const QuestPageForm = ({ questId, editingPage, onPageCreated, onPageUpdated, pag
       setContent('');
       setChoices([]);
       setError('');
-      
+
     } catch (error) {
       enqueueSnackbar('Ошибка при сохранении страницы', { variant: 'error' });
       setError('Ошибка при сохранении страницы');
@@ -82,105 +82,125 @@ const QuestPageForm = ({ questId, editingPage, onPageCreated, onPageUpdated, pag
 
   return (
     <Box
-  component="form"
-  onSubmit={handleSubmit}
-  sx={{
-    mt: 8,
-    mx: 'auto',
-    border: '1px solid black',
-    px: 4,
-    py: 5,
-    backgroundColor: theme.palette.background.paper,
-  }}
->
-  <Typography variant="h5" sx={{ mb: 1, color: theme.palette.text.primary }}>
-    {editingPage ? 'Редактировать страницу' : 'Создать новую страницу'}
-  </Typography>
+      component="form"
+      onSubmit={handleSubmit}
+      sx={{
+        mt: { xs: 3, sm: 6 },
+        mx: 'auto',
+        width: '100%',
+        px: { xs: 2, sm: 4 },
+        py: { xs: 3, sm: 5 },
+        border: `1px solid ${theme.palette.divider}`,
+        backgroundColor: theme.palette.background.paper,
+        borderRadius: 2,
+        boxShadow: { xs: 1, sm: 2 },
+      }}
+    >
+      <Typography 
+        variant="h5" 
+        sx={{
+          mb: 1, 
+          fontSize: { xs: '1.2rem', sm: '1.5rem' },
+          color: theme.palette.text.primary, 
+          textAlign: 'center',
+        }}
+      >
+        {editingPage ? 'Редактировать страницу' : 'Создать новую страницу'}
+      </Typography>
 
-  {error && (
-    <Typography color="error" align="center" sx={{ mb: 2 }}>
-      {error}
-    </Typography>
-  )}
+      {error && (
+        <Typography color="error" align="center" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
 
-  <TextField
-    label="Название"
-    value={title}
-    onChange={(e) => setTitle(e.target.value)}
-    fullWidth
-    margin="normal"
-    required
-  />
-  <TextField
-    label="Содержание"
-    value={content}
-    onChange={(e) => setContent(e.target.value)}
-    fullWidth
-    margin="normal"
-    multiline
-    rows={4}
-  />
+      <TextField
+        label="Название"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        fullWidth
+        margin="normal"
+        required
+      />
+      <TextField
+        label="Содержание"
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        fullWidth
+        margin="normal"
+        multiline
+        rows={4}
+      />
 
-  <Typography variant="h5" sx={{ mt: 2, color: theme.palette.text.primary }}>
-    Варианты выбора
-  </Typography>
+      <Typography 
+        variant="h5" 
+        sx={{
+          mb: 0, 
+          fontSize: { xs: '1.2rem', sm: '1.5rem' },
+          color: theme.palette.text.primary, 
+          textAlign: 'center',
+        }}
+      >
+        Варианты выбора
+      </Typography>
 
-  <List sx={{ mb: 2 }}>
-    {choices.map((choice, index) => (
-      
-      <ListItem key={index} disablePadding sx={{ mb: 1 }}>
+      <List sx={{ mb: 1 }}>
+        {choices.map((choice, index) => (
+
+          <ListItem key={index} disablePadding sx={{ mb: 1 }}>
+            <TextField
+              value={choice.text}
+              onChange={(e) => handleChoiceTextChange(index, e.target.value)}
+              fullWidth
+              margin="normal"
+            />
+            <Select
+              value={choice.nextPage || ''}
+              onChange={(e) => handleNextPageChange(index, e.target.value)}
+              displayEmpty
+              sx={{ ml: 2, minWidth: 150 }}
+            >
+              <MenuItem value="">Выберите страницу</MenuItem>
+              {pages.map((page) => (
+                <MenuItem key={page._id} value={page._id}>
+                  {page.title}
+                </MenuItem>
+              ))}
+            </Select>
+            <IconButton onClick={() => handleDeleteChoice(index)} color="error" sx={{ ml: 1 }}>
+              <Delete />
+            </IconButton>
+          </ListItem>
+        ))}
+      </List>
+
+      <Box display="flex" alignItems="center" sx={{ mt: 1 }}>
         <TextField
-          value={choice.text}
-          onChange={(e) => handleChoiceTextChange(index, e.target.value)}
+          label="Новый вариант выбора"
+          value={newChoiceText}
+          onChange={(e) => setNewChoiceText(e.target.value)}
           fullWidth
           margin="normal"
         />
-        <Select
-          value={choice.nextPage || ''}
-          onChange={(e) => handleNextPageChange(index, e.target.value)}
-          displayEmpty
-          sx={{ ml: 2, minWidth: 150 }}
-        >
-          <MenuItem value="">Выберите страницу</MenuItem>
-          {pages.map((page) => (
-            <MenuItem key={page._id} value={page._id}>
-              {page.title}
-            </MenuItem>
-          ))}
-        </Select>
-        <IconButton onClick={() => handleDeleteChoice(index)} color="error" sx={{ ml: 1 }}>
-          <Delete />
+        <IconButton onClick={handleAddChoice} color="primary" sx={{ ml: 1 }}>
+          <Add />
         </IconButton>
-      </ListItem>
-    ))}
-  </List>
+      </Box>
 
-  <Box display="flex" alignItems="center" sx={{ mt: 2 }}>
-    <TextField
-      label="Новый вариант выбора"
-      value={newChoiceText}
-      onChange={(e) => setNewChoiceText(e.target.value)}
-      fullWidth
-      margin="normal"
-    />
-    <IconButton onClick={handleAddChoice} color="primary" sx={{ ml: 1 }}>
-      <Add />
-    </IconButton>
-  </Box>
-
-  <Button
-    type="submit"
-    variant="outlined"
-    fullWidth
-    sx={{
-      mt: 3,
-      py: 1.5,
-      borderRadius: 0,
-    }}
-  >
-    {editingPage ? 'Сохранить изменения' : 'Создать страницу'}
-  </Button>
-</Box>
+      <Button
+        type="submit"
+        variant="outlined"
+        fullWidth
+        sx={{
+          mt: 3,
+          py: 1.5,
+          borderRadius: 0,
+          fontSize: { xs: '0.9rem', sm: '1.1rem' },
+        }}
+      >
+        {editingPage ? 'Сохранить изменения' : 'Создать страницу'}
+      </Button>
+    </Box>
 
   );
 };

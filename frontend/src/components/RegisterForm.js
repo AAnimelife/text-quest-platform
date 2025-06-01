@@ -10,13 +10,13 @@ const RegisterForm = ({ onRegister }) => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const theme = useTheme();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
       const userData = { username, email, password };
-      //const response = await authService.register(userData);
-      onRegister(userData); 
+      await authService.register(userData);
+      onRegister(userData);
       setError('');
     } catch (error) {
       setError('Ошибка при регистрации');
@@ -29,16 +29,24 @@ const RegisterForm = ({ onRegister }) => {
       component="form"
       onSubmit={handleSubmit}
       sx={{
-        mt: 8,
+        mt: { xs: 4, sm: 8 },
         mx: 'auto',
+        width: '100%',
         maxWidth: 400,
-        border: '1px solid black',
-        px: 4,
-        py: 5,
+        px: { xs: 2, sm: 4 },
+        py: { xs: 3, sm: 5 },
+        border: `1px solid ${theme.palette.divider}`,
         backgroundColor: theme.palette.background.paper,
+        borderRadius: 2,
+        boxShadow: { xs: 1, sm: 2 },
       }}
     >
-      <Typography variant="h2" align="center" gutterBottom>
+      <Typography
+        variant="h4"
+        align="center"
+        gutterBottom
+        sx={{ fontSize: { xs: '1.6rem', sm: '2rem' } }}
+      >
         Регистрация
       </Typography>
 
@@ -55,7 +63,6 @@ const RegisterForm = ({ onRegister }) => {
         fullWidth
         required
         margin="normal"
-        variant="outlined"
       />
 
       <TextField
@@ -66,7 +73,6 @@ const RegisterForm = ({ onRegister }) => {
         fullWidth
         required
         margin="normal"
-        variant="outlined"
       />
 
       <TextField
@@ -77,30 +83,30 @@ const RegisterForm = ({ onRegister }) => {
         fullWidth
         required
         margin="normal"
-        variant="outlined"
       />
 
       <Button
         type="submit"
-        variant="outlined"
+        variant="contained"
         fullWidth
         sx={{
           mt: 3,
           py: 1.5,
-          borderRadius: 0,
+          fontWeight: 600,
+          fontSize: { xs: '1rem', sm: '1.1rem' },
         }}
       >
         Зарегистрироваться
       </Button>
 
       <Button
-        variant="text"
+        variant="contained"
         fullWidth
         sx={{
           mt: 2,
           py: 1,
           textTransform: 'none',
-          fontSize: '0.9rem',
+          fontSize: { xs: '0.85rem', sm: '0.95rem' },
         }}
         onClick={() => navigate('/login')}
       >

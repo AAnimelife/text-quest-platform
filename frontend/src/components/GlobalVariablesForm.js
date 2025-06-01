@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextField, Box, Typography, List, ListItem, useTheme, Paper, ListItemText, IconButton, MenuItem } from '@mui/material';
+import { TextField, Box, Typography, List, useTheme, Paper, ListItemText, IconButton, MenuItem } from '@mui/material';
 import { Add, Delete } from '@mui/icons-material';
 
 const GlobalVariablesForm = ({ globalVariables, onUpdate }) => {
