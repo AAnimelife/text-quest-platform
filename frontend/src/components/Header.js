@@ -1,11 +1,28 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, Button, Box, useTheme } from '@mui/material';
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  IconButton,
+  Box,
+  useTheme,
+  Tooltip,
+  useMediaQuery,
+} from '@mui/material';
+import {
+  Home as HomeIcon,
+  Person as PersonIcon,
+  Login as LoginIcon,
+  Logout as LogoutIcon,
+} from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const Header = ({ isAuthenticated, onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
+  const isSmUp = useMediaQuery(theme.breakpoints.up('sm'));
 
   const getPageTitle = () => {
     switch (location.pathname) {
@@ -25,31 +42,100 @@ const Header = ({ isAuthenticated, onLogout }) => {
       position="static"
       elevation={2}
       sx={{
-        backgroundColor: theme.palette.background.default,
+        mb: 2,
+        p: 1,
+        border: `1px solid ${theme.palette.divider}`,
+        backgroundColor: theme.palette.background.paper,
+        borderRadius: 2,
         color: theme.palette.text.primary,
       }}
     >
-      <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
-        <Typography variant="h6">{getPageTitle()}</Typography>
+      <Toolbar
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+        }}
+      >
+        <Typography
+          variant="h6"
+          sx={{ fontSize: { xs: '1.1rem', sm: '1.3rem' }, fontWeight: 600 }}
+        >
+          {getPageTitle()}
+        </Typography>
 
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button color="inherit" onClick={() => navigate('/')}>
-            На главную
-          </Button>
-
-          {isAuthenticated ? (
+        <Box
+          sx={{
+            display: 'flex',
+            gap: { xs: 1, sm: 2 },
+            alignItems: 'center',
+            mt: { xs: 1, sm: 0 },
+          }}
+        >
+          {isSmUp ? (
             <>
-              <Button color="inherit" onClick={() => navigate('/profile')}>
-                Профиль
+              <Button
+                startIcon={<HomeIcon />}
+                color="inherit"
+                onClick={() => navigate('/')}
+              >
+                На главную
               </Button>
-              <Button color="inherit" onClick={onLogout}>
-                Выйти
-              </Button>
+              {isAuthenticated ? (
+                <>
+                  <Button
+                    startIcon={<PersonIcon />}
+                    color="inherit"
+                    onClick={() => navigate('/profile')}
+                  >
+                    Профиль
+                  </Button>
+                  <Button
+                    startIcon={<LogoutIcon />}
+                    color="inherit"
+                    onClick={onLogout}
+                  >
+                    Выйти
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  startIcon={<LoginIcon />}
+                  color="inherit"
+                  onClick={() => navigate('/login')}
+                >
+                  Войти
+                </Button>
+              )}
             </>
           ) : (
-            <Button color="inherit" onClick={() => navigate('/login')}>
-              Войти
-            </Button>
+            <>
+              <Tooltip title="На главную">
+                <IconButton onClick={() => navigate('/')}>
+                  <HomeIcon />
+                </IconButton>
+              </Tooltip>
+              {isAuthenticated ? (
+                <>
+                  <Tooltip title="Профиль">
+                    <IconButton onClick={() => navigate('/profile')}>
+                      <PersonIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Выйти">
+                    <IconButton onClick={onLogout}>
+                      <LogoutIcon />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              ) : (
+                <Tooltip title="Войти">
+                  <IconButton onClick={() => navigate('/login')}>
+                    <LoginIcon />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </>
           )}
         </Box>
       </Toolbar>

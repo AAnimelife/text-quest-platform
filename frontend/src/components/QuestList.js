@@ -1,5 +1,12 @@
 import React from 'react';
-import { List, ListItemText, Button, Typography, Box, useTheme } from '@mui/material';
+import {
+  List,
+  ListItemText,
+  Button,
+  Typography,
+  Box,
+  useTheme,
+} from '@mui/material';
 import questService from '../services/questService';
 import { useNavigate } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
@@ -8,6 +15,7 @@ const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
   const navigate = useNavigate();
   const theme = useTheme();
   const { enqueueSnackbar } = useSnackbar();
+
   const handleDelete = async (id) => {
     try {
       await questService.deleteQuest(id);
@@ -20,10 +28,14 @@ const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
   };
 
   return (
-    <Box sx={{ mt: 3, mx: 'auto' }}>
-      <Typography variant="h5" sx={{ mb: 2, color: theme.palette.text.primary }}>
+    <Box sx={{ mt: 3 }}>
+      <Typography
+        variant="h5"
+        sx={{ mb: 2, color: theme.palette.text.primary, fontSize: { xs: '1.2rem', sm: '1.5rem' } }}
+      >
         Список квестов
       </Typography>
+
       <List>
         {quests.map((quest) => (
           <Box
@@ -31,28 +43,37 @@ const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
             sx={{
               mb: 2,
               p: 2,
-              border: '1px solid black',
+              border: `1px solid ${theme.palette.divider}`,
               backgroundColor: theme.palette.background.paper,
+              borderRadius: 2,
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { sm: 'center' },
+              gap: 2,
             }}
           >
             <ListItemText
               primary={quest.title}
               secondary={quest.description}
               sx={{
-                maxWidth: '45%',
-                overflow: 'hidden',
-                whiteSpace: 'nowrap',
-                textOverflow: 'ellipsis',
+                flex: 1,
+                wordBreak: 'break-word',
+                whiteSpace: 'normal',
               }}
             />
-            <Box sx={{ display: 'flex', gap: 1 }}>
+
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                flexWrap: 'wrap',
+                gap: 1,
+                justifyContent: 'flex-end',
+              }}
+            >
               <Button
                 variant="outlined"
                 onClick={() => onQuestUpdated(quest)}
-                sx={{ borderRadius: 0 }}
               >
                 Редактировать
               </Button>
@@ -60,14 +81,12 @@ const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
                 variant="outlined"
                 color="error"
                 onClick={() => handleDelete(quest._id)}
-                sx={{ borderRadius: 0 }}
               >
                 Удалить
               </Button>
               <Button
                 variant="outlined"
                 onClick={() => navigate(`/quests/${quest._id}/pages`)}
-                sx={{ borderRadius: 0 }}
               >
                 Страницы
               </Button>
@@ -76,15 +95,9 @@ const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
                 onClick={() => {
                   const questUrl = `${window.location.origin}/quest/play/${quest._id}`;
                   navigator.clipboard.writeText(questUrl)
-                    .then(() => {
-                      console.log('Ссылка скопирована:', questUrl);
-                      // Можно также показать уведомление пользователю
-                    })
-                    .catch((err) => {
-                      console.error('Ошибка при копировании ссылки:', err);
-                    });
+                    .then(() => enqueueSnackbar('Ссылка скопирована!', { variant: 'info' }))
+                    .catch((err) => console.error('Ошибка при копировании ссылки:', err));
                 }}
-                sx={{ borderRadius: 0 }}
               >
                 Копировать ссылку
               </Button>
@@ -92,7 +105,6 @@ const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
           </Box>
         ))}
       </List>
-
     </Box>
   );
 };

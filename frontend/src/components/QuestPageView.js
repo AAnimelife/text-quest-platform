@@ -1,10 +1,31 @@
 import React from 'react';
-import { Box, Typography, Button } from '@mui/material';
+import { Box, Typography, Button, useTheme } from '@mui/material';
 
 const QuestPageView = ({ page, onChoiceClick }) => {
+  const theme = useTheme();
+
   return (
-    <Box elevation={3} sx={{ p: 3, backgroundColor: 'background.paper' }}>
-      <Typography variant="body1" sx={{ whiteSpace: 'pre-line', mb: 3 }}>
+    <Box
+      sx={{
+        p: { xs: 2, sm: 3 },
+        borderRadius: 2,
+        backgroundColor: theme.palette.background.paper,
+        boxShadow: { xs: 1, sm: 2 },
+        maxWidth: 800,
+        mx: 'auto',
+      }}
+    >
+      <Typography
+        variant="body1"
+        sx={{
+          whiteSpace: 'pre-line',
+          mb: { xs: 2, sm: 3 },
+          fontSize: { xs: '1rem', sm: '1.1rem' },
+          lineHeight: 1.6,
+          textAlign: 'justify',
+          color: theme.palette.text.primary,
+        }}
+      >
         {page.content}
       </Typography>
 
@@ -17,7 +38,12 @@ const QuestPageView = ({ page, onChoiceClick }) => {
             disabled={!choice.nextPage}
             onClick={() => onChoiceClick(choice)}
             fullWidth
-            sx={{ borderRadius: 0 }}
+            sx={{
+              borderRadius: 1,
+              minHeight: 48,
+              fontSize: { xs: '0.95rem', sm: '1.05rem' },
+              fontWeight: 500,
+            }}
           >
             {choice.text}
           </Button>
