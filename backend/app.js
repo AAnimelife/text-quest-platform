@@ -10,7 +10,7 @@ const app = express();
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || origin === 'null' || origin.startsWith('file://') || origin === 'https://text-quest-platform-main.onrender.com') {
+    if (!origin || origin === 'null' || origin.startsWith('file://') || origin === 'https://text-quest-platform-main.onrender.com' || origin === 'http://localhost:3000') {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));

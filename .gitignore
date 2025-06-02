@@ -4,5 +4,3 @@ node_modules
 
 /backend/.env
 /frontend/.env
-
-package.json

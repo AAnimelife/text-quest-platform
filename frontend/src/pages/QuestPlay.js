@@ -37,13 +37,13 @@ const QuestPlay = () => {
     const nextPage = pages.find((p) => p._id === choice.nextPage);
     setCurrentPage(nextPage);
   };
-if (loading) {
-    return (
-      <Box sx={{ mt: 10, display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress size={60} />
-      </Box>
-    );
-  }
+  if (loading) {
+      return (
+        <Box sx={{ mt: 10, display: 'flex', justifyContent: 'center' }}>
+          <CircularProgress size={60} />
+        </Box>
+      );
+    }
 
   if (!quest || !currentPage) {
     return (
