@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { HashRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import QuestsPage from './pages/QuestsPage';
 import LoginPage from './pages/LoginPage';
 import ProtectedRoute from './components/ProtectedRoute';
