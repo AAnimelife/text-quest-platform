@@ -6,7 +6,9 @@ const QuestTree = ({ pages }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const containerRef = useRef(null);
-  const svgRef = useRef(null); // 👈 Сохраняем ref на svg
+  const svgRef = useRef(null);
+  const truncate = (str, max = 20) => str.length > max ? str.slice(0, max) + '…' : str;
+
 
   const [dimensions, setDimensions] = useState({ width: 1000, height: 1000 });
 
@@ -17,100 +19,66 @@ const QuestTree = ({ pages }) => {
     }
   }, []);
 
-  const buildTree = (pages) => {
+  const buildForest = (pages) => {
     const pageMap = new Map();
-    const childRefs = new Set();
-
-    pages.forEach((page) => {
+    pages.forEach(page => {
       pageMap.set(page._id, { ...page, children: [] });
     });
 
-    const buildNode = (id, visited = new Set()) => {
-      if (!pageMap.has(id)) return null;
-      if (visited.has(id)) {
-        return {
-          _id: id,
-          title: `(loop) ${pageMap.get(id).title}`,
-          children: [],
-        };
+    const globalSeen = new Set();
+    const nodes = [];
+
+    for (const page of pages) {
+      if (!globalSeen.has(page._id)) {
+        const rootNode = buildNode(page._id, new Set(), pageMap, globalSeen);
+        if (rootNode) nodes.push(rootNode);
       }
-
-      const node = pageMap.get(id);
-      const newNode = {
-        _id: node._id,
-        title: node.title,
-        children: [],
-      };
-
-      visited.add(id);
-
-      if (node.choices?.length > 0) {
-        node.choices.forEach((choice) => {
-          if (choice.nextPage && pageMap.has(choice.nextPage)) {
-            childRefs.add(choice.nextPage);
-            const childNode = buildNode(choice.nextPage, new Set(visited));
-            if (childNode) {
-              newNode.children.push(childNode);
-            }
-          }
-        });
-      }
-
-      return newNode;
-    };
-
-    const rootNodes = [];
-    pages.forEach((page) => {
-      if (!childRefs.has(page._id)) {
-        const rootNode = buildNode(page._id);
-        if (rootNode) rootNodes.push(rootNode);
-      }
-    });
-
-    if (rootNodes.length === 0) {
-      return pages.map((page) => buildNode(page._id));
     }
 
-    return rootNodes;
+    return nodes.filter(Boolean);
   };
 
-  const treeData = buildTree(pages);
+  const buildNode = (id, path, pageMap, globalSeen) => {
+    if (!pageMap.has(id)) return null;
+
+    const isCycle = path.has(id);
+    const isRepeat = globalSeen.has(id);
+    globalSeen.add(id);
+
+    const node = pageMap.get(id);
+    const newNode = {
+      _id: id,
+      title: isCycle ? `(loop) ${node.title}` : isRepeat ? `(used) ${node.title}` : node.title,
+      children: [],
+    };
+
+    if (isCycle || isRepeat) return newNode;
+
+    path.add(id);
+
+    for (const choice of node.choices || []) {
+      if (choice.nextPage && pageMap.has(choice.nextPage)) {
+        const childNode = buildNode(choice.nextPage, new Set(path), pageMap, globalSeen);
+        if (childNode) newNode.children.push(childNode);
+      }
+    }
+
+    return newNode;
+  };
+
+  const treeData = buildForest(pages);
 
   const handleDownloadFullSVG = () => {
     const originalSvg = svgRef.current?.querySelector('svg');
-    if (!originalSvg) {
-      console.warn('SVG not found');
-      return;
-    }
+    if (!originalSvg) return;
 
     const g = originalSvg.querySelector('g');
-    if (!g) {
-      console.warn('<g> not found in SVG');
-      return;
-    }
-
     const clonedSvg = originalSvg.cloneNode(true);
     clonedSvg.style.filter = 'none';
-
     const clonedG = clonedSvg.querySelector('g');
     clonedG.removeAttribute('transform');
-
-    // ❌ Удаляем все marker-end
-    clonedSvg.querySelectorAll('[marker-end]').forEach(el => {
-      el.removeAttribute('marker-end');
-    });
-
-    // ❌ Удаляем все <defs> с marker
-    clonedSvg.querySelectorAll('defs').forEach(defs => {
-      defs.parentNode.removeChild(defs);
-    });
-
-    // ✅ Альтернативно: удалить все <path> с определённым классом, если нужны
-    // clonedSvg.querySelectorAll('path').forEach(path => {
-    //   if (path.getAttribute('marker-end')) {
-    //     path.remove();
-    //   }
-    // });
+    clonedSvg.querySelectorAll('[marker-end]').forEach(el => el.removeAttribute('marker-end'));
+    clonedSvg.querySelectorAll('defs').forEach(defs => defs.remove());
 
     const tempContainer = document.createElement('div');
     tempContainer.style.position = 'fixed';
@@ -125,10 +93,7 @@ const QuestTree = ({ pages }) => {
 
     clonedSvg.setAttribute('width', width);
     clonedSvg.setAttribute('height', height);
-    clonedSvg.setAttribute(
-      'viewBox',
-      `${bbox.x - padding} ${bbox.y - padding} ${width} ${height}`
-    );
+    clonedSvg.setAttribute('viewBox', `${bbox.x - padding} ${bbox.y - padding} ${width} ${height}`);
 
     const serializer = new XMLSerializer();
     const source = serializer.serializeToString(clonedSvg);
@@ -143,55 +108,55 @@ const QuestTree = ({ pages }) => {
     document.body.removeChild(tempContainer);
   };
 
-
   return (
-  <Stack spacing={2} sx={{height: "100%"}}>
-    <Button variant="contained" onClick={handleDownloadFullSVG}>
-      Скачать полное дерево (SVG)
-    </Button>
+    <Stack spacing={2} sx={{ height: '100%' }}>
+      <Button variant="contained" onClick={handleDownloadFullSVG}>
+        Скачать полное дерево (SVG)
+      </Button>
 
-    <Box
-      ref={containerRef}
-      sx={{
-        width: '100%',
-        height: '850px',
-        filter: isDark ? 'invert(1) hue-rotate(180deg)' : 'none',
-        overflow: 'auto',
-        padding: 2,
-      }}
-    >
-      <Box ref={svgRef} sx={{height:"100%"}}>
-        <Tree 
-          sx={{
-            height:"100%"
-          }}
-          data={treeData}
-          orientation="vertical"
-          translate={{ x: dimensions.width / 2, y: 100 }}
-          pathFunc="straight"
-          collapsible={false}
-          nodeSize={{ x: 170, y: 100 }}
-          renderCustomNodeElement={({ nodeDatum }) => (
-            <g style={{height: "100%"}}>
-              <circle r="15" fill="#076" />
-              <text
-                x="20"
-                y="5"
-                style={{
-                  fill: "#111",
-                  fontWeight: "bold",
-                  strokeWidth: 0,
-                }}
-              >
-                {nodeDatum.title}
-              </text>
-            </g>
-          )}
-        />
+      <Box
+        ref={containerRef}
+        sx={{
+          width: '100%',
+          height: '850px',
+          filter: isDark ? 'invert(1) hue-rotate(180deg)' : 'none',
+          overflow: 'auto',
+          padding: 2,
+        }}
+      >
+        <Box ref={svgRef} sx={{ height: '100%' }}>
+          <Tree
+            data={treeData}
+            orientation="vertical"
+            translate={{ x: dimensions.width / 2, y: 100 }}
+            pathFunc="straight"
+            collapsible={true}
+            nodeSize={{ x: 270, y: 150 }}
+            nodeLabelComponent={null} 
+            renderCustomNodeElement={({ nodeDatum }) => (
+              <g>
+                <circle r="15" fill="#076" />
+                <text
+                  x="20"
+                  y="5"
+                  style={{
+                    fill: isDark ? '#eee' : '#111',
+                    fontSize: '20px',
+                    fontWeight: 700,
+                    stroke: 'none',
+                  }}
+                >
+                  <title>{nodeDatum.title}</title>
+                  {truncate(nodeDatum.title)}
+                </text>
+
+              </g>
+            )}
+          />
+        </Box>
       </Box>
-    </Box>
-  </Stack>
-);
+    </Stack>
+  );
 };
 
 export default QuestTree;

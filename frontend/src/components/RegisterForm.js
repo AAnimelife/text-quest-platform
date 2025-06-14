@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TextField, Button, Box, Typography, useTheme } from '@mui/material';
 import authService from '../services/authService';
 import { useNavigate } from 'react-router-dom';
+import { useSnackbar } from 'notistack';
 
 const RegisterForm = ({ onRegister }) => {
   const [username, setUsername] = useState('');
@@ -11,8 +12,27 @@ const RegisterForm = ({ onRegister }) => {
   const navigate = useNavigate();
   const theme = useTheme();
 
+
+  const { enqueueSnackbar } = useSnackbar();
+
+  const passwordRequirements = {
+    hasLowercase: /[a-z]/.test(password),
+    hasUppercase: /[A-Z]/.test(password),
+    hasNumber: /\d/.test(password),
+    hasSymbol: /[^a-zA-Z0-9]/.test(password),
+    minLength: password.length >= 8,
+  };
+  const allValid = Object.values(passwordRequirements).every(Boolean);
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!allValid) {
+      enqueueSnackbar('Пароль не соответствует требованиям безопасности', { variant: 'warning' });
+      return;
+    }
+
     try {
       const userData = { username, email, password };
       await authService.register(userData);
@@ -83,7 +103,31 @@ const RegisterForm = ({ onRegister }) => {
         fullWidth
         required
         margin="normal"
+        error={!allValid && password.length > 0}
+        helperText={
+          !allValid && password.length > 0 && 'Пароль не соответствует требованиям'
+        }
       />
+      <Box sx={{ fontSize: '0.85rem', color: 'text.secondary', mb: 2, ml: 1 }}>
+        Пароль должен:
+        <ul style={{ marginTop: 4, marginBottom: 0, paddingLeft: '1.2rem' }}>
+          <li style={{ color: passwordRequirements.minLength ? 'green' : 'inherit' }}>
+            не менее 8 символов
+          </li>
+          <li style={{ color: passwordRequirements.hasLowercase ? 'green' : 'inherit' }}>
+            содержать строчную букву
+          </li>
+          <li style={{ color: passwordRequirements.hasUppercase ? 'green' : 'inherit' }}>
+            содержать заглавную букву
+          </li>
+          <li style={{ color: passwordRequirements.hasNumber ? 'green' : 'inherit' }}>
+            содержать цифру
+          </li>
+          <li style={{ color: passwordRequirements.hasSymbol ? 'green' : 'inherit' }}>
+            содержать символ (например, !@#$)
+          </li>
+        </ul>
+      </Box>
 
       <Button
         type="submit"

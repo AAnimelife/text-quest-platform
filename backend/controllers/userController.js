@@ -1,17 +1,14 @@
 const Quest = require('../models/Quest');
 const QuestPage = require('../models/QuestPage');
+const User = require('../models/User');
+const bcrypt = require('bcryptjs');
 
 const getUserProfile = async (req, res) => {
   try {
     const user = req.user;
-
-    // Найдём все квесты, где пользователь автор
     const quests = await Quest.find({ author: user._id });
     console.log(quests);
-    // Получим список всех ID квестов
     const questIds = quests.map(q => q._id);
-
-    // Подсчитаем количество страниц, принадлежащих этим квестам
     const pageCount = await QuestPage.countDocuments({ questId: { $in: questIds } });
     console.log(pageCount);
     res.json({
@@ -27,4 +24,29 @@ const getUserProfile = async (req, res) => {
   }
 };
 
-module.exports = { getUserProfile };
+const changePassword = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await User.findById(userId);
+
+    if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Неверный текущий пароль' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.json({ message: 'Пароль успешно обновлён' });
+  } catch (error) {
+    console.error('Ошибка смены пароля:', error);
+    res.status(500).json({ message: 'Ошибка смены пароля', error: error.message });
+  }
+};
+
+module.exports = { getUserProfile, changePassword };

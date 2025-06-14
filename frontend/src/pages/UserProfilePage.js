@@ -120,6 +120,7 @@ const UserProfilePage = () => {
         </Box>
 
         <Typography sx={{ mt: 2 }}><strong>Email:</strong> {profile.email}</Typography>
+        <Button onClick={()=>navigate('/change-password')}>Сбросить пароль</Button>
         <Typography sx={{ mt: 1 }}>
           <strong>Квестов:</strong> {profile.questCount}, <strong>Страниц:</strong> {profile.pageCount}
         </Typography>

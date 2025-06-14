@@ -11,6 +11,7 @@ import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { CssBaseline, IconButton } from '@mui/material';
 import UserProfilePage from './pages/UserProfilePage';
 import QuestPlay from './pages/QuestPlay';
+import ChangePasswordPage from './pages/ChandgePasswordPage';
 
 function App() {
   const [mode, setMode] = useState(localStorage.getItem('theme') || 'light');
@@ -60,6 +61,15 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route 
+            path="/change-password" 
+            element={
+              <ProtectedRoute>
+                <ChangePasswordPage />
+              </ProtectedRoute>
+            } 
+          />
+
           <Route 
             path="/quest/play/:questId"
             element={<QuestPlay />} 

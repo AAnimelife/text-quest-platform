@@ -93,7 +93,7 @@ const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
               <Button
                 variant="outlined"
                 onClick={() => {
-                  const questUrl = `${window.location.origin}/quest/play/${quest._id}`;
+                  const questUrl = `${process.env.REACT_APP_ORIGIN_URL}/quest/play/${quest._id}`;
                   navigator.clipboard.writeText(questUrl)
                     .then(() => enqueueSnackbar('Ссылка скопирована!', { variant: 'info' }))
                     .catch((err) => console.error('Ошибка при копировании ссылки:', err));
