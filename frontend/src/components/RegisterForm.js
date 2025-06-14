@@ -35,7 +35,6 @@ const RegisterForm = ({ onRegister }) => {
 
     try {
       const userData = { username, email, password };
-      await authService.register(userData);
       onRegister(userData);
       setError('');
     } catch (error) {
