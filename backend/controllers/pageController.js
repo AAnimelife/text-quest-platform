@@ -21,8 +21,8 @@ const createPage = async (req, res) => {
 
 const getPages = async (req, res) => {
     try {
-        const { questId } = req.params;
-        const pages = await QuestPage.find({ questId: questId });
+        const { id } = req.params;
+        const pages = await QuestPage.find({ questId: id });
         res.status(200).json(pages);
     } catch (error) {
         res.status(500).json({ message: 'Error while geting pages: ', error: error.message });

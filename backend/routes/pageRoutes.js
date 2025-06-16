@@ -22,7 +22,7 @@ router.post('/', [
     body('options'),
 ], validate, canEditQuest, createPage);
 
-router.get('/:questId', canEditQuest, getPages);
+router.get('/:id', canEditQuest, getPages);
 
 router.put('/:id', checkPagePermission, updatePage);
 router.delete('/:id', checkPagePermission, deletePage);
