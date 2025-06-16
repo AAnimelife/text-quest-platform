@@ -87,22 +87,39 @@ const QuestTree = ({ pages }) => {
   const originalSvg = svgRef.current?.querySelector('svg');
   if (!originalSvg) return;
 
-  const g = originalSvg.querySelector('g');
   const clonedSvg = originalSvg.cloneNode(true);
-  clonedSvg.style.filter = 'none';
+  clonedSvg.style.filter = 'none'; // убираем фильтр
 
   const clonedG = clonedSvg.querySelector('g');
   clonedG.removeAttribute('transform');
 
-  // НЕ удаляем marker-end, чтобы стрелки сохранились
-  // НЕ удаляем defs, чтобы определения маркеров сохранились
-
-  // Добавляем черный фон, если нужен
+  // Добавим фон, чтобы не было прозрачности
   const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
   bgRect.setAttribute('width', '100%');
   bgRect.setAttribute('height', '100%');
-  bgRect.setAttribute('fill', 'black');
+  bgRect.setAttribute('fill', isDark ? 'black' : 'white'); // фон под тему
   clonedSvg.insertBefore(bgRect, clonedSvg.firstChild);
+
+  // Инлайн стили для линий и стрелок
+  const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+  style.textContent = `
+    path {
+      stroke: ${isDark ? 'black' : 'black'} !important;
+      fill: none !important;
+      stroke-width: 3px;
+    }
+    marker path {
+      fill: 'black' !important;
+    }
+    circle {
+      fill: 'black' !important;
+    }
+    text {
+      fill: 'black' !important;
+      font-weight: 700;
+    }
+  `;
+  clonedSvg.prepend(style);
 
   const tempContainer = document.createElement('div');
   tempContainer.style.position = 'fixed';
@@ -131,7 +148,6 @@ const QuestTree = ({ pages }) => {
 
   document.body.removeChild(tempContainer);
 };
-
 
   return (
     <Stack spacing={2} sx={{ height: '100%' }}>
@@ -165,7 +181,7 @@ const QuestTree = ({ pages }) => {
                   x="20"
                   y="-7"
                   style={{
-                    fill: isDark ? '#eee' : '#111',
+                    fill: 'black',
                     fontSize: '26px',
                     fontWeight: 700,
                     stroke: 'none',
