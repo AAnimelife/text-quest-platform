@@ -12,6 +12,7 @@ import { CssBaseline, IconButton } from '@mui/material';
 import UserProfilePage from './pages/UserProfilePage';
 import QuestPlay from './pages/QuestPlay';
 import ChangePasswordPage from './pages/ChandgePasswordPage';
+import NotFoundPage from './pages/NotFoundPage';
 
 function App() {
   const [mode, setMode] = useState(localStorage.getItem('theme') || 'light');
@@ -73,6 +74,11 @@ function App() {
           <Route 
             path="/quest/play/:questId"
             element={<QuestPlay />} 
+          />
+
+          <Route
+            path="*" 
+            element={<NotFoundPage />}
           />
         </Routes>
       </Router>
