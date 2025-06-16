@@ -38,6 +38,10 @@ const AdminPanelPage = () => {
       </Box>
     );
   }
+  
+  const handleQuestDeleted = (id) => {
+    setQuests(quests.filter((quest) => quest._id !== id));
+  };
 
   return (
     <Box sx={{ maxWidth: 1600, mx: 'auto', mt: 3 }}>
@@ -54,7 +58,9 @@ const AdminPanelPage = () => {
         <Tab label="Квесты" />
       </Tabs>
 
-      {tab === 0 && <UserList users={users} />}
+      {tab === 0 && <UserList users={users} 
+        onQuestDeleted={handleQuestDeleted}
+        />}
       {tab === 1 && <QuestList quests={quests} />}
     </Box>
   );

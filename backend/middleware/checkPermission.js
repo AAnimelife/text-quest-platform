@@ -4,7 +4,6 @@ const Quest = require('../models/Quest');
 const canEditQuest = async (req, res, next) => {
   try {
     const questId = req.params.id || req.body.questId;
-
     const quest = await Quest.findById(questId);
     if (!quest) {
       return res.status(404).json({ message: 'Квест не найден' });

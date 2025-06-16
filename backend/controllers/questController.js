@@ -117,7 +117,7 @@ const deleteQuest = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const quest = await Quest.findOneAndDelete({ _id: id, author: req.user._id });
+        const quest = await Quest.findOneAndDelete({ _id: id });
 
         if (!quest) {
             return res.status(404).json({ message: 'Quest not found :(' });

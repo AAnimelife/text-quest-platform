@@ -8,7 +8,22 @@ const QuestTree = ({ pages }) => {
   const containerRef = useRef(null);
   const svgRef = useRef(null);
   const truncate = (str, max = 20) => str.length > max ? str.slice(0, max) + '…' : str;
-
+ const elbowPath = ({ source, target }) => {
+  const radius = 16;
+  const dirX = target.x > source.x ? 1 : -1;
+  const midY = source.y + (target.y - source.y) / 2;
+  if (source.x === target.x) {
+    return `M${source.x},${source.y} V${target.y}`;
+  }
+  return `
+    M${source.x},${source.y}
+    V${midY - radius}
+    A${radius},${radius} 0 0,${dirX > 0 ? 0 : 1} ${source.x + dirX * radius},${midY}
+    H${target.x - dirX * radius}
+    A${radius},${radius} 0 0,${dirX > 0 ? 1 : 0} ${target.x},${midY + radius}
+    V${target.y}
+  `;
+};
 
   const [dimensions, setDimensions] = useState({ width: 1000, height: 1000 });
 
@@ -69,44 +84,54 @@ const QuestTree = ({ pages }) => {
   const treeData = buildForest(pages);
 
   const handleDownloadFullSVG = () => {
-    const originalSvg = svgRef.current?.querySelector('svg');
-    if (!originalSvg) return;
+  const originalSvg = svgRef.current?.querySelector('svg');
+  if (!originalSvg) return;
 
-    const g = originalSvg.querySelector('g');
-    const clonedSvg = originalSvg.cloneNode(true);
-    clonedSvg.style.filter = 'none';
-    const clonedG = clonedSvg.querySelector('g');
-    clonedG.removeAttribute('transform');
-    clonedSvg.querySelectorAll('[marker-end]').forEach(el => el.removeAttribute('marker-end'));
-    clonedSvg.querySelectorAll('defs').forEach(defs => defs.remove());
+  const g = originalSvg.querySelector('g');
+  const clonedSvg = originalSvg.cloneNode(true);
+  clonedSvg.style.filter = 'none';
 
-    const tempContainer = document.createElement('div');
-    tempContainer.style.position = 'fixed';
-    tempContainer.style.left = '-9999px';
-    tempContainer.appendChild(clonedSvg);
-    document.body.appendChild(tempContainer);
+  const clonedG = clonedSvg.querySelector('g');
+  clonedG.removeAttribute('transform');
 
-    const bbox = clonedG.getBBox();
-    const padding = 100;
-    const width = bbox.width + 2 * padding;
-    const height = bbox.height + 2 * padding;
+  // НЕ удаляем marker-end, чтобы стрелки сохранились
+  // НЕ удаляем defs, чтобы определения маркеров сохранились
 
-    clonedSvg.setAttribute('width', width);
-    clonedSvg.setAttribute('height', height);
-    clonedSvg.setAttribute('viewBox', `${bbox.x - padding} ${bbox.y - padding} ${width} ${height}`);
+  // Добавляем черный фон, если нужен
+  const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  bgRect.setAttribute('width', '100%');
+  bgRect.setAttribute('height', '100%');
+  bgRect.setAttribute('fill', 'black');
+  clonedSvg.insertBefore(bgRect, clonedSvg.firstChild);
 
-    const serializer = new XMLSerializer();
-    const source = serializer.serializeToString(clonedSvg);
-    const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'quest-tree-full.svg';
-    link.click();
-    URL.revokeObjectURL(url);
+  const tempContainer = document.createElement('div');
+  tempContainer.style.position = 'fixed';
+  tempContainer.style.left = '-9999px';
+  tempContainer.appendChild(clonedSvg);
+  document.body.appendChild(tempContainer);
 
-    document.body.removeChild(tempContainer);
-  };
+  const bbox = clonedG.getBBox();
+  const padding = 100;
+  const width = bbox.width + 2 * padding;
+  const height = bbox.height + 2 * padding;
+
+  clonedSvg.setAttribute('width', width);
+  clonedSvg.setAttribute('height', height);
+  clonedSvg.setAttribute('viewBox', `${bbox.x - padding} ${bbox.y - padding} ${width} ${height}`);
+
+  const serializer = new XMLSerializer();
+  const source = serializer.serializeToString(clonedSvg);
+  const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'quest-tree-full.svg';
+  link.click();
+  URL.revokeObjectURL(url);
+
+  document.body.removeChild(tempContainer);
+};
+
 
   return (
     <Stack spacing={2} sx={{ height: '100%' }}>
@@ -129,19 +154,19 @@ const QuestTree = ({ pages }) => {
             data={treeData}
             orientation="vertical"
             translate={{ x: dimensions.width / 2, y: 100 }}
-            pathFunc="straight"
+            pathFunc={elbowPath}
             collapsible={true}
-            nodeSize={{ x: 270, y: 150 }}
-            nodeLabelComponent={null} 
+            nodeSize={{ x: 350, y: 150 }}
+            nodeLabelComponent={null}
             renderCustomNodeElement={({ nodeDatum }) => (
               <g>
                 <circle r="15" fill="#076" />
                 <text
                   x="20"
-                  y="5"
+                  y="-7"
                   style={{
                     fill: isDark ? '#eee' : '#111',
-                    fontSize: '20px',
+                    fontSize: '26px',
                     fontWeight: 700,
                     stroke: 'none',
                   }}
