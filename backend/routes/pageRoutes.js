@@ -2,6 +2,7 @@ const express = require('express');
 const authMiddleware = require('../middleware/authMiddleware');
 const { createPage, getPages, updatePage, deletePage, setStart } = require('../controllers/pageController');
 const { body, validationResult} = require('express-validator');
+const { checkPagePermission, canEditQuest } = require('../middleware/checkPermission');
 const router = express.Router();
 
 router.use(authMiddleware);
@@ -19,10 +20,12 @@ router.post('/', [
     body('title').isLength({ min: 1, max: 100 }),
     body('content'),
     body('options'),
-], validate, createPage);
-router.get('/:questId', getPages);
-router.put('/:id', updatePage);
-router.delete('/:id', deletePage);
-router.patch('/:id/start', setStart);
+], validate, canEditQuest, createPage);
+
+router.get('/:questId', canEditQuest, getPages);
+
+router.put('/:id', checkPagePermission, updatePage);
+router.delete('/:id', checkPagePermission, deletePage);
+router.patch('/:id/start', checkPagePermission, setStart);
 
 module.exports = router;

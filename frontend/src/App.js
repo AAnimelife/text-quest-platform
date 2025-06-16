@@ -13,11 +13,12 @@ import UserProfilePage from './pages/UserProfilePage';
 import QuestPlay from './pages/QuestPlay';
 import ChangePasswordPage from './pages/ChandgePasswordPage';
 import NotFoundPage from './pages/NotFoundPage';
+import AdminPanelPage from './pages/AdminPanelPage';
 
 function App() {
   const [mode, setMode] = useState(localStorage.getItem('theme') || 'light');
   const theme = useMemo(() => getNewspaperTheme(mode), [mode]);
-  
+
   const toggleMode = () => {
     setMode((prev) => {
       const newMode = prev === 'light' ? 'dark' : 'light';
@@ -29,9 +30,9 @@ function App() {
 
   return (
     <ThemeProvider theme={theme}>
-      <CssBaseline /> 
+      <CssBaseline />
       <IconButton onClick={toggleMode} sx={{ mt: 2, ml: 2, }}>
-          {mode === 'light' ? <Brightness4 /> : <Brightness7 />}
+        {mode === 'light' ? <Brightness4 /> : <Brightness7 />}
       </IconButton>
       <Router>
         <Routes>
@@ -62,22 +63,31 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route 
-            path="/change-password" 
+          <Route
+            path="/change-password"
             element={
               <ProtectedRoute>
                 <ChangePasswordPage />
               </ProtectedRoute>
-            } 
-          />
-
-          <Route 
-            path="/quest/play/:questId"
-            element={<QuestPlay />} 
+            }
           />
 
           <Route
-            path="*" 
+            path="/quest/play/:questId"
+            element={<QuestPlay />}
+          />
+
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute adminOnly>
+                <AdminPanelPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="*"
             element={<NotFoundPage />}
           />
         </Routes>

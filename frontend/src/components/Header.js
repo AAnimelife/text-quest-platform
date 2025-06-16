@@ -15,15 +15,17 @@ import {
   Person as PersonIcon,
   Login as LoginIcon,
   Logout as LogoutIcon,
+  Settings as SettingsIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const Header = ({ isAuthenticated, onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const isSmUp = useMediaQuery(theme.breakpoints.up('sm'));
-
+  const { user } = useAuth();
   const getPageTitle = () => {
     switch (location.pathname) {
       case '/':
@@ -90,6 +92,16 @@ const Header = ({ isAuthenticated, onLogout }) => {
                   >
                     Профиль
                   </Button>
+                  {isAuthenticated && user?.role === 'admin' && (
+                    <Button
+                      startIcon={<SettingsIcon />}
+                      color="inherit"
+                      onClick={() => navigate('/admin')}
+                    >
+                      Админка
+                    </Button>
+                  )}
+
                   <Button
                     startIcon={<LogoutIcon />}
                     color="inherit"
@@ -122,6 +134,12 @@ const Header = ({ isAuthenticated, onLogout }) => {
                       <PersonIcon />
                     </IconButton>
                   </Tooltip>
+                  {isAuthenticated && user?.role === 'admin' && (
+                  <Tooltip title="Админка">
+                    <IconButton onClick={() => navigate('/admin')}>
+                      <SettingsIcon />
+                    </IconButton>
+                  </Tooltip>)}
                   <Tooltip title="Выйти">
                     <IconButton onClick={onLogout}>
                       <LogoutIcon />
