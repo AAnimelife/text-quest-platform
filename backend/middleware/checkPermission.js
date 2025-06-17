@@ -11,7 +11,11 @@ const canEditQuest = async (req, res, next) => {
 
     const user = req.user;
 
-    if (user.role === 'admin' || quest.author.equals(user._id)) {
+    if (
+      user.role === 'admin' ||
+      quest.author.equals(user._id) ||
+      quest.assistants.equals(user._id)
+    ) {
       req.quest = quest;
       return next();
     }
@@ -29,8 +33,13 @@ const checkPagePermission = async (req, res, next) => {
 
     const quest = await Quest.findById(page.questId);
     if (!quest) return res.status(404).json({ message: 'Квест не найден' });
-
-    if (req.user.role === 'admin' || quest.author.equals(req.user._id)) {
+    console.log(quest);
+    if (
+      req.user.role === 'admin' ||
+      quest.author.equals(req.user._id) ||
+      quest.assistants.equals(req.user._id)
+    ) {
+      console.log('A');
       return next();
     }
 

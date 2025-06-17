@@ -4,6 +4,7 @@ const questSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String },
   author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  assistants: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   tags: [{ type: String }],
   pages: [{ type: mongoose.Schema.Types.ObjectId, ref: 'QuestPage' }],
   globalVariables: { 

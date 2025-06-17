@@ -16,10 +16,15 @@ const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
   const theme = useTheme();
   const { enqueueSnackbar } = useSnackbar();
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (quest) => {
     try {
-      await questService.deleteQuest(id);
-      onQuestDeleted(id);
+      if (quest.isAssistant) {
+
+        enqueueSnackbar('Вы не можете удалить этот квест — вы помощник', { variant: 'warning' });
+        return;
+      }
+      await questService.deleteQuest(quest._id);
+      onQuestDeleted(quest._id);
       enqueueSnackbar('Квест успешно удален!', { variant: 'success' });
     } catch (error) {
       enqueueSnackbar('Ошибка при удалении квеста!', { variant: 'error' });
@@ -53,7 +58,16 @@ const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
             }}
           >
             <ListItemText
-              primary={quest.title}
+              primary={
+                <>
+                  {quest.title}{' '}
+                  {quest.isAssistant && (
+                    <Typography component="span" variant="body2" color="text.secondary">
+                      (помощник)
+                    </Typography>
+                  )}
+                </>
+              }
               secondary={quest.description}
               sx={{
                 flex: 1,
@@ -80,7 +94,7 @@ const QuestList = ({ quests, onQuestDeleted, onQuestUpdated }) => {
               <Button
                 variant="outlined"
                 color="error"
-                onClick={() => handleDelete(quest._id)}
+                onClick={() => handleDelete(quest)}
               >
                 Удалить
               </Button>

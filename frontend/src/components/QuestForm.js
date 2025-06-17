@@ -34,6 +34,10 @@ const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
       };
 
       if (editingQuest) {
+        if (editingQuest.isAssistant) {
+          enqueueSnackbar('Вы не можете изменять этот квест — вы помощник', { variant: 'warning' });
+          return;
+        }
         const updatedQuest = await questService.updateQuest(editingQuest._id, questData);
         onQuestUpdated(updatedQuest);
         enqueueSnackbar('Изменения сохранены!', { variant: 'success' });
@@ -115,7 +119,7 @@ const QuestForm = ({ onQuestCreated, editingQuest, onQuestUpdated }) => {
         fullWidth
         margin="normal"
       />
-      
+
       <GlobalVariablesForm
         globalVariables={globalVariables}
         onUpdate={setGlobalVariables}

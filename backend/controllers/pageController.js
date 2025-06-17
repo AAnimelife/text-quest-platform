@@ -31,6 +31,7 @@ const getPages = async (req, res) => {
 
 const updatePage = async (req, res) => {
     try {
+        console.log("AA");
         const { id } = req.params;
         const { title, content, choices } = req.body;
 
